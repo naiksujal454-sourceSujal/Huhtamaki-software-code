@@ -1,0 +1,10 @@
+{
+  "name": "huhtamaki-vision-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "desktop": "npm run desktop --prefix Frontend",
+    "dev": "npm run dev --prefix Frontend",
+    "build": "npm run build --prefix Frontend"
+  }
+}

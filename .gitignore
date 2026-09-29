@@ -1,0 +1,96 @@
+# ==============================================================================
+# Huhtamaki Vision Inspection System - Master .gitignore
+# ==============================================================================
+
+# --- Python & Virtual Environments ---
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+develop-eggs/
+.installed.cfg
+eggs/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.coverage.*
+
+# --- Node.js & Frontend ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+Frontend/node_modules/
+Frontend/dist/
+Frontend/.vite/
+*.tsbuildinfo
+tsconfig.app.tsbuildinfo
+tsconfig.node.tsbuildinfo
+
+# --- Rust & Tauri ---
+target/
+src-tauri/target/
+Frontend/src-tauri/target/
+**/*.rs.bk
+*.pdb
+
+# --- Databases & Local Storage ---
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+app.db
+Backend/app.db
+cookies.txt
+Backend/cookies.txt
+
+# --- Environment & Credentials ---
+.env
+.env.local
+.env.*.local
+Backend/.env
+*.pem
+*.key
+*.cert
+
+# --- Operating System & Editor Files ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*~
+
+# --- Log Files ---
+*.log
+logs/
+Backend/logs/
+npm-debug.log
+
+# --- Temporary Data, Caches & Demo Media ---
+web_cache/
+Backend/data/web_cache/
+Backend/data/processed/
+demo_folder_images/
+* - Copy*
+* - Copy (*)
+*-Copy*
+Frontend/recipes/processed/
+
