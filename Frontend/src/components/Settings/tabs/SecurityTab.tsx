@@ -1,29 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../../contexts/LanguageContext';
-import { 
-  fetchUsers, 
-  toggleUserActive, 
+import {
+  fetchUsers,
+  toggleUserActive,
   deleteUser,
-  fetchRolePrivileges, 
-  updateRolePrivileges, 
-  fetchSettingsSection, 
-  updateSettingsSection, 
-  type User 
+  fetchRolePrivileges,
+  updateRolePrivileges,
+  fetchSettingsSection,
+  updateSettingsSection,
+  type User
 } from '../../../services/api';
 import { auditLogger } from '../../../services/auditLogger';
 import ChangePasswordModal from '../../Modals/ChangePasswordModal';
-import { 
-  KeyRound, 
-  Shield, 
-  RefreshCw, 
-  UserPlus, 
-  CheckCircle, 
-  AlertTriangle, 
-  X, 
-  Save, 
-  Lock, 
-  Unlock, 
-  ShieldCheck, 
+import {
+  KeyRound,
+  Shield,
+  RefreshCw,
+  UserPlus,
+  CheckCircle,
+  AlertTriangle,
+  X,
+  Save,
+  Lock,
+  Unlock,
+  ShieldCheck,
   Clock,
   Loader2,
   Trash2
@@ -50,7 +50,7 @@ const SecurityTab: React.FC = () => {
     try {
       const raw = localStorage.getItem('huhtamaki_cached_users');
       if (raw) return JSON.parse(raw);
-    } catch {}
+    } catch { }
     return [
       { id: 1, username: 'admin', role: 'admin', is_active: true },
       { id: 2, username: 'operator', role: 'operator', is_active: true },
@@ -73,14 +73,14 @@ const SecurityTab: React.FC = () => {
     try {
       const raw = localStorage.getItem('huhtamaki_cached_op_groups');
       if (raw) return JSON.parse(raw);
-    } catch {}
+    } catch { }
     return [];
   });
   const [supervisorGroups, setSupervisorGroups] = useState<PrivilegeGroup[]>(() => {
     try {
       const raw = localStorage.getItem('huhtamaki_cached_sup_groups');
       if (raw) return JSON.parse(raw);
-    } catch {}
+    } catch { }
     return [];
   });
   const [loadingPrivileges, setLoadingPrivileges] = useState(false);
@@ -100,7 +100,7 @@ const SecurityTab: React.FC = () => {
         setUsers(data);
         try {
           localStorage.setItem('huhtamaki_cached_users', JSON.stringify(data));
-        } catch {}
+        } catch { }
       }
     } catch (err) {
       console.error('Failed to load users:', err);
@@ -115,8 +115,8 @@ const SecurityTab: React.FC = () => {
       const rawItems = Array.isArray(g.privileges)
         ? g.privileges
         : Array.isArray(g.items)
-        ? g.items
-        : [];
+          ? g.items
+          : [];
       return {
         category: g.category || g.title || 'General',
         privileges: rawItems.map((p: any) => ({
@@ -142,13 +142,13 @@ const SecurityTab: React.FC = () => {
         setOperatorGroups(opNorm);
         try {
           localStorage.setItem('huhtamaki_cached_op_groups', JSON.stringify(opNorm));
-        } catch {}
+        } catch { }
       }
       if (supNorm.length > 0) {
         setSupervisorGroups(supNorm);
         try {
           localStorage.setItem('huhtamaki_cached_sup_groups', JSON.stringify(supNorm));
-        } catch {}
+        } catch { }
       }
     } catch (err) {
       console.error('Failed to load role privileges:', err);
@@ -186,7 +186,7 @@ const SecurityTab: React.FC = () => {
     try {
       const res = await toggleUserActive(user.id);
       setUsers(prev => prev.map(u => (u.id === user.id ? { ...u, is_active: res.is_active } : u)));
-      
+
       const actionName = res.is_active ? 'user_activated' : 'user_deactivated';
       const desc = `User '${user.username}' was ${res.is_active ? 'activated' : 'deactivated'}`;
       auditLogger.logAction(res.is_active ? 'User Activate' : 'User Deactivate', actionName, desc, {
@@ -219,7 +219,7 @@ const SecurityTab: React.FC = () => {
       try {
         const nextUsers = users.filter(u => u.id !== user.id);
         localStorage.setItem('huhtamaki_cached_users', JSON.stringify(nextUsers));
-      } catch {}
+      } catch { }
 
       auditLogger.logAction('User Deleted', 'security.user_deleted', `Deleted user account '${user.username}' (role: ${user.role})`, {
         target_username: user.username,
@@ -373,14 +373,13 @@ const SecurityTab: React.FC = () => {
 
   return (
     <div className="max-w-5xl pb-10">
-      
+
       {/* Toast feedback banner */}
       {feedbackMsg && (
-        <div className={`mb-4 p-3 rounded-md border flex items-center gap-2 text-xs font-bold animate-in fade-in ${
-          feedbackMsg.type === 'success'
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-            : 'bg-red-50 border-red-200 text-red-800'
-        }`}>
+        <div className={`mb-4 p-3 rounded-md border flex items-center gap-2 text-xs font-bold animate-in fade-in ${feedbackMsg.type === 'success'
+          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+          : 'bg-red-50 border-red-200 text-red-800'
+          }`}>
           {feedbackMsg.type === 'success' ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
           <span>{feedbackMsg.text}</span>
         </div>
@@ -393,11 +392,11 @@ const SecurityTab: React.FC = () => {
             <Shield size={20} className="text-[#153472]" />
             <span>{t('User Management')}</span>
           </h3>
-          <p className="text-xs text-gray-500">Configure authentication credentials, active accounts, and database access controls.</p>
+          <p className="text-xs text-gray-500">Configure authentication credentials, active accounts, and access controls.</p>
         </div>
 
         <div className="flex gap-2">
-          <button 
+          <button
             onClick={() => {
               setCreateUserError(null);
               setCreateUserSuccess(null);
@@ -408,7 +407,7 @@ const SecurityTab: React.FC = () => {
             <UserPlus size={14} />
             <span>Add User</span>
           </button>
-          <button 
+          <button
             onClick={handleRefresh}
             disabled={loadingUsers}
             className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-1.5 px-3 rounded border border-gray-300 text-xs flex items-center gap-1.5 cursor-pointer transition-colors disabled:opacity-50"
@@ -440,9 +439,8 @@ const SecurityTab: React.FC = () => {
             {users.map((user) => (
               <div key={user.id} className="flex items-center justify-between py-2.5">
                 <div className="flex items-center gap-3 text-sm">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
-                    user.is_active ? 'bg-blue-100 text-[#153472]' : 'bg-gray-200 text-gray-400'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${user.is_active ? 'bg-blue-100 text-[#153472]' : 'bg-gray-200 text-gray-400'
+                    }`}>
                     {user.username.slice(0, 2).toUpperCase()}
                   </div>
                   <div>
@@ -468,18 +466,17 @@ const SecurityTab: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2.5">
-                  <button 
+                  <button
                     onClick={() => handleToggleActive(user)}
-                    className={`font-bold py-1 px-3 rounded text-xs shadow-sm transition-colors cursor-pointer ${
-                      user.is_active 
-                        ? 'bg-[#da291c] hover:bg-red-700 text-white' 
-                        : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                    }`}
+                    className={`font-bold py-1 px-3 rounded text-xs shadow-sm transition-colors cursor-pointer ${user.is_active
+                      ? 'bg-[#da291c] hover:bg-red-700 text-white'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      }`}
                   >
                     {user.is_active ? 'Deactivate' : 'Activate'}
                   </button>
 
-                  <button 
+                  <button
                     onClick={() => setSelectedUserForPassword(user)}
                     className="bg-[#153472] hover:bg-blue-900 text-white font-bold py-1 px-3 rounded text-xs shadow-sm flex items-center gap-1.5 cursor-pointer transition-colors"
                   >
@@ -487,7 +484,7 @@ const SecurityTab: React.FC = () => {
                     <span>Password</span>
                   </button>
 
-                  <button 
+                  <button
                     onClick={() => handleDeleteUser(user)}
                     title={`Delete user ${user.username}`}
                     className="bg-gray-100 hover:bg-red-50 text-gray-500 hover:text-red-600 border border-gray-300 hover:border-red-300 p-1.5 rounded transition-all cursor-pointer shadow-xs active:scale-95"
@@ -506,11 +503,9 @@ const SecurityTab: React.FC = () => {
         <div className="mb-4">
           <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             <ShieldCheck size={20} className="text-[#153472]" />
-            <span>Role Privileges & Access Enforcement</span>
+            <span>Role Privileges & Access</span>
           </h3>
-          <p className="text-xs text-gray-500">
-            Strict permission matrix stored in the database. Only items with an active checkmark (✓) are granted access. Unticked capabilities are strictly blocked.
-          </p>
+
         </div>
 
         {operatorGroups.length === 0 && loadingPrivileges ? (
@@ -520,7 +515,7 @@ const SecurityTab: React.FC = () => {
           </div>
         ) : (
           <div className="flex flex-col md:flex-row gap-6">
-            
+
             {/* Operator Column */}
             <div className="flex-1 bg-white border border-gray-200 rounded-lg p-5 shadow-sm flex flex-col justify-between">
               <div>
@@ -539,17 +534,16 @@ const SecurityTab: React.FC = () => {
                     <h5 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">{group.category}</h5>
                     <div className="flex flex-col gap-2">
                       {(group.privileges || []).map((item, pIdx) => (
-                        <label 
-                          key={pIdx} 
-                          className={`flex items-center gap-2.5 p-1.5 rounded cursor-pointer text-xs font-bold select-none transition-colors ${
-                            item.is_granted ? 'text-gray-800 bg-blue-50/40 hover:bg-blue-50' : 'text-gray-400 hover:bg-gray-50'
-                          }`}
+                        <label
+                          key={pIdx}
+                          className={`flex items-center gap-2.5 p-1.5 rounded cursor-pointer text-xs font-bold select-none transition-colors ${item.is_granted ? 'text-gray-800 bg-blue-50/40 hover:bg-blue-50' : 'text-gray-400 hover:bg-gray-50'
+                            }`}
                         >
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={item.is_granted}
                             onChange={() => handleTogglePrivilege('operator', gIdx, pIdx)}
-                            className="w-4 h-4 text-[#153472] rounded border-gray-300 focus:ring-[#153472] cursor-pointer" 
+                            className="w-4 h-4 text-[#153472] rounded border-gray-300 focus:ring-[#153472] cursor-pointer"
                           />
                           <span>{item.label}</span>
                         </label>
@@ -560,7 +554,7 @@ const SecurityTab: React.FC = () => {
               </div>
 
               <div className="pt-4 border-t border-gray-100">
-                <button 
+                <button
                   onClick={() => handleSavePrivileges('operator')}
                   disabled={savingOperator}
                   className="w-full bg-[#153472] hover:bg-blue-900 active:bg-blue-950 text-white font-bold py-2 rounded-md shadow-sm text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors disabled:opacity-60"
@@ -589,17 +583,16 @@ const SecurityTab: React.FC = () => {
                     <h5 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">{group.category}</h5>
                     <div className="flex flex-col gap-2">
                       {(group.privileges || []).map((item, pIdx) => (
-                        <label 
-                          key={pIdx} 
-                          className={`flex items-center gap-2.5 p-1.5 rounded cursor-pointer text-xs font-bold select-none transition-colors ${
-                            item.is_granted ? 'text-gray-800 bg-emerald-50/40 hover:bg-emerald-50' : 'text-gray-400 hover:bg-gray-50'
-                          }`}
+                        <label
+                          key={pIdx}
+                          className={`flex items-center gap-2.5 p-1.5 rounded cursor-pointer text-xs font-bold select-none transition-colors ${item.is_granted ? 'text-gray-800 bg-emerald-50/40 hover:bg-emerald-50' : 'text-gray-400 hover:bg-gray-50'
+                            }`}
                         >
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={item.is_granted}
                             onChange={() => handleTogglePrivilege('supervisor', gIdx, pIdx)}
-                            className="w-4 h-4 text-[#153472] rounded border-gray-300 focus:ring-[#153472] cursor-pointer" 
+                            className="w-4 h-4 text-[#153472] rounded border-gray-300 focus:ring-[#153472] cursor-pointer"
                           />
                           <span>{item.label}</span>
                         </label>
@@ -610,7 +603,7 @@ const SecurityTab: React.FC = () => {
               </div>
 
               <div className="pt-4 border-t border-gray-100">
-                <button 
+                <button
                   onClick={() => handleSavePrivileges('supervisor')}
                   disabled={savingSupervisor}
                   className="w-full bg-[#153472] hover:bg-blue-900 active:bg-blue-950 text-white font-bold py-2 rounded-md shadow-sm text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors disabled:opacity-60"
@@ -636,8 +629,8 @@ const SecurityTab: React.FC = () => {
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1">Inactivity Lock Time (min)</label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               min="1"
               max="120"
               value={inactivityMinutes}
@@ -648,8 +641,8 @@ const SecurityTab: React.FC = () => {
 
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1">Auto Logout Timing (min)</label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               min="5"
               max="480"
               value={logoutMinutes}
@@ -659,7 +652,7 @@ const SecurityTab: React.FC = () => {
           </div>
         </div>
 
-        <button 
+        <button
           onClick={handleSaveSessionSettings}
           disabled={savingSession}
           className="bg-[#153472] hover:bg-blue-900 text-white font-bold py-2 px-6 rounded-md shadow-sm text-xs flex items-center gap-2 cursor-pointer disabled:opacity-60"
@@ -671,7 +664,7 @@ const SecurityTab: React.FC = () => {
 
       {/* Change Password Card / Modal */}
       {selectedUserForPassword && (
-        <ChangePasswordModal 
+        <ChangePasswordModal
           user={selectedUserForPassword}
           onClose={() => setSelectedUserForPassword(null)}
           onSuccess={() => {
@@ -697,9 +690,9 @@ const SecurityTab: React.FC = () => {
             <form onSubmit={handleCreateUser} className="p-5 flex flex-col gap-3.5">
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-bold text-gray-700">Username</label>
-                <input 
-                  type="text" 
-                  value={newUsername} 
+                <input
+                  type="text"
+                  value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
                   placeholder="Enter username"
                   className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[#153472] disabled:bg-gray-100"
@@ -710,9 +703,9 @@ const SecurityTab: React.FC = () => {
 
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-bold text-gray-700">Password</label>
-                <input 
-                  type="password" 
-                  value={newPassword} 
+                <input
+                  type="password"
+                  value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Enter initial password"
                   className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[#153472] disabled:bg-gray-100"
@@ -723,8 +716,8 @@ const SecurityTab: React.FC = () => {
 
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-bold text-gray-700">Role</label>
-                <select 
-                  value={newRole} 
+                <select
+                  value={newRole}
                   onChange={(e) => setNewRole(e.target.value as any)}
                   disabled={creatingUser || !!createUserSuccess}
                   className="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[#153472] bg-white cursor-pointer disabled:bg-gray-100"
@@ -753,16 +746,16 @@ const SecurityTab: React.FC = () => {
               )}
 
               <div className="flex justify-end gap-2.5 mt-2 pt-2 border-t border-gray-100">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setShowAddUserModal(false)}
                   disabled={creatingUser}
                   className="px-4 py-1.5 text-xs font-bold text-gray-600 bg-gray-100 rounded hover:bg-gray-200 cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={creatingUser || !!createUserSuccess}
                   className="px-4 py-1.5 text-xs font-bold text-white bg-[#153472] rounded hover:bg-blue-900 cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
                 >

@@ -101,7 +101,7 @@ const GeneralSettingsTab: React.FC = () => {
         if (typeof window !== 'undefined') {
           try {
             window.close();
-          } catch {}
+          } catch { }
         }
       }, 1500);
     } catch (err: any) {
@@ -141,11 +141,10 @@ const GeneralSettingsTab: React.FC = () => {
       )}
 
       {actionMsg && (
-        <div className={`mb-4 p-3 border rounded-md text-xs font-bold flex items-center gap-2 ${
-          actionMsg.type === 'error'
+        <div className={`mb-4 p-3 border rounded-md text-xs font-bold flex items-center gap-2 ${actionMsg.type === 'error'
             ? 'bg-red-50 border-red-200 text-red-800'
             : 'bg-amber-50 border-amber-200 text-amber-800'
-        }`}>
+          }`}>
           <AlertCircle size={16} />
           <span>{actionMsg.text}</span>
           {isRestarting && <span className="ml-auto font-mono text-xs">Reloading in {restartCountdown}s...</span>}
@@ -156,14 +155,14 @@ const GeneralSettingsTab: React.FC = () => {
         <label className="block text-xs font-bold text-gray-800 uppercase tracking-wide mb-2">
           Global Date Format
         </label>
-        <select 
+        <select
           value={dateFormat}
           onChange={(e) => handleDateFormatChange(e.target.value)}
           className="w-full max-w-[320px] bg-white border border-gray-300 rounded-md px-3.5 py-2 text-xs font-bold text-gray-800 focus:outline-none focus:border-[#153472] shadow-xs cursor-pointer"
         >
-          <option value="DD/MM/YYYY">DD/MM/YYYY (e.g. 28/09/2026)</option>
-          <option value="MM/DD/YYYY">MM/DD/YYYY (e.g. 09/28/2026)</option>
-          <option value="YYYY-MM-DD">YYYY-MM-DD (e.g. 2026-09-28)</option>
+          <option value="DD/MM/YYYY">DD/MM/YYYY </option>
+          <option value="MM/DD/YYYY">MM/DD/YYYY </option>
+          <option value="YYYY-MM-DD">YYYY-MM-DD </option>
         </select>
         <p className="text-[11px] text-gray-500 mt-2 font-medium">
           Date format updates immediately in real-time across the live clock, inspection time, event logs, and all records.
@@ -174,7 +173,7 @@ const GeneralSettingsTab: React.FC = () => {
         <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wide mb-1">System Actions</h3>
         <p className="text-[11px] text-gray-500 mb-4">Execute genuine hardware and software operating controls.</p>
         <div className="flex gap-4">
-          <button 
+          <button
             type="button"
             onClick={handleRestart}
             disabled={isRestarting || isShuttingDown}
@@ -183,7 +182,7 @@ const GeneralSettingsTab: React.FC = () => {
             <RotateCcw size={14} className={isRestarting ? 'animate-spin' : ''} />
             <span>{isRestarting ? `Restarting (${restartCountdown}s)...` : 'Restart Software'}</span>
           </button>
-          <button 
+          <button
             type="button"
             onClick={handleShutdown}
             disabled={isRestarting || isShuttingDown}
@@ -195,7 +194,7 @@ const GeneralSettingsTab: React.FC = () => {
         </div>
       </div>
 
-      <button 
+      <button
         type="button"
         onClick={handleSave}
         disabled={saving || isRestarting}

@@ -22,7 +22,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
     try {
       const raw = localStorage.getItem('huhtamaki_cached_dashboard_summary');
       if (raw) return JSON.parse(raw);
-    } catch {}
+    } catch { }
     return null;
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -36,7 +36,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
       setSummary(data);
       try {
         localStorage.setItem('huhtamaki_cached_dashboard_summary', JSON.stringify(data));
-      } catch {}
+      } catch { }
     } catch (err) {
       console.warn('Failed to load dashboard summary:', err);
     } finally {
@@ -77,9 +77,9 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
           setSummary(data);
           try {
             localStorage.setItem('huhtamaki_cached_dashboard_summary', JSON.stringify(data));
-          } catch {}
+          } catch { }
         })
-        .catch(() => {});
+        .catch(() => { });
     }, 4000);
     return () => clearInterval(interval);
   }, []);
@@ -87,17 +87,17 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
   // Format trend data for chart
   const chartData = summary?.trend && summary.trend.length > 0
     ? summary.trend.map((pt) => ({
-        name: String(pt.date).slice(5),
-        pass: pt.passed,
-        fail: pt.failed,
-      }))
+      name: String(pt.date).slice(5),
+      pass: pt.passed,
+      fail: pt.failed,
+    }))
     : [
-        {
-          name: 'Today',
-          pass: summary ? summary.passed : 0,
-          fail: summary ? summary.failed : 0,
-        },
-      ];
+      {
+        name: 'Today',
+        pass: summary ? summary.passed : 0,
+        fail: summary ? summary.failed : 0,
+      },
+    ];
 
   const totalInspected = summary ? summary.total : 0;
   const passedCount = summary ? summary.passed : 0;
@@ -113,10 +113,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
   const topFailures = summary?.top_failure_reasons && summary.top_failure_reasons.length > 0
     ? summary.top_failure_reasons
     : [
-        { reason: 'CODE_MISMATCH', count: failedCount > 0 ? failedCount : 0 },
-        { reason: 'MISSING_GAP_SENSOR_PULSE', count: 0 },
-        { reason: 'SCANNER_READ_TIMEOUT', count: 0 },
-      ];
+      { reason: 'CODE_MISMATCH', count: failedCount > 0 ? failedCount : 0 },
+      { reason: 'MISSING_GAP_SENSOR_PULSE', count: 0 },
+      { reason: 'SCANNER_READ_TIMEOUT', count: 0 },
+    ];
 
   const recentResults = summary?.recent_results || [];
 
@@ -144,7 +144,6 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
           <div className="flex justify-between items-center mb-4">
             <div>
               <h2 className="text-xl font-bold text-pixtron-blue">{t('Batch Analytics Dashboard')}</h2>
-              <span className="text-xs text-gray-500 font-mono">Live PostgreSQL Database Telemetry</span>
             </div>
             <button
               onClick={loadData}
@@ -281,9 +280,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
                       </td>
                       <td className="px-4 py-2 font-mono text-gray-600">{res.expected_code || '-'}</td>
                       <td className="px-4 py-2 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                          isPass ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-red-100 text-red-800 border border-red-300'
-                        }`}>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase ${isPass ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-red-100 text-red-800 border border-red-300'
+                          }`}>
                           {isPass ? 'PASS' : 'FAIL'}
                         </span>
                       </td>
@@ -409,9 +407,8 @@ const StatCard: React.FC<StatCardProps> = ({
 }) => {
   return (
     <div
-      className={`flex-1 flex flex-col items-center justify-center bg-[#fafafa] border border-gray-200 rounded-md shadow-sm transition-shadow hover:shadow-md ${
-        size === 'small' ? 'py-2' : 'py-5'
-      }`}
+      className={`flex-1 flex flex-col items-center justify-center bg-[#fafafa] border border-gray-200 rounded-md shadow-sm transition-shadow hover:shadow-md ${size === 'small' ? 'py-2' : 'py-5'
+        }`}
     >
       <div className="flex items-center gap-1.5 mb-1">
         {icon}
