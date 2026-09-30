@@ -200,11 +200,10 @@ When a defect is detected (barcode mismatch, unreadable code, or damaged label),
   - Highlights exact character differences.
   - Shows defect reason and timestamp.
 - **Recovery Procedure**:
-  1. The operator inspects the container and removes it from the reject chute.
-  2. The operator clicks **Acknowledge Alarm** on the modal.
-  3. The backend sends Modbus TCP **Coil 1 = 0**, silencing the physical buzzer.
-  4. The operator clicks **Resume Inspection**. Modbus Coil 0 is reset, the conveyor belt restarts, and inspection resumes.
-  5. An immutable audit record (`alarm.acknowledged`) is logged with the operator's username and timestamp.
+  1. The operator clicks **Acknowledge Alarm** on the modal.
+  2. The backend sends Modbus TCP **Coil 1 = 0**, silencing the physical buzzer.
+  3. The operator clicks **Resume Inspection**. Modbus Coil 0 is reset, the conveyor belt restarts, and inspection resumes.
+  4. An immutable audit record (`alarm.acknowledged`) is logged with the operator's username and timestamp.
 
 ---
 
