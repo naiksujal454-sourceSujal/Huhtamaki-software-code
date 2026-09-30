@@ -106,13 +106,7 @@ When a label image is uploaded, the backend executes an optimized multi-stage co
 
 ---
 
-## 4. Live Inspection & Barcode Comparison Logic
-
-### 4.1 Inspection Execution Loop
-1. The operator clicks **START** on the top control bar. The state machine switches from `IDLE` to `RUNNING`.
-2. a high-precision **Gap Sensor (DI-0)** triggers the **Datalogic Data Matrix 220** scanner.
-3. The scanner captures the image, decodes the barcode payload, and streams the barcode string and image frame over industrial Ethernet (`192.168.125.20:51235`) to the backend.
-4. Total inspection cycle time is **50ms - 95ms**.
+## 4. Barcode Comparison Logic
 
 ### 4.2 Exact Barcode Matching Logic (`compare_code`)
 The core verification function runs character-by-character comparison:
