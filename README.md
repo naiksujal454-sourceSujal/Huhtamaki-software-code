@@ -36,7 +36,7 @@
 
 ## 1. Overview & Purpose
 
-The **Huhtamaki Vision Inspection System** is an enterprise-grade, high-speed industrial quality control and human-machine interface (HMI) platform. Built specifically for Huhtamaki packaging and container manufacturing facilities, it provides automated optical verification of barcodes.
+The **Huhtamaki Vision Inspection System** is an enterprise-grade, high-speed industrial quality control and human-machine interface (HMI) platform. Built specifically for Huhtamaki packaging and container manufacturing facilities, it provides automated optical verification of 1D barcodes.
 
 ### Key Capabilities:
 - **Dedicated Industrial Imager**: Interfaced with a **Datalogic Data Matrix 220** optical sensor via industrial Ethernet TCP/IP (`192.168.125.20:51235`).
