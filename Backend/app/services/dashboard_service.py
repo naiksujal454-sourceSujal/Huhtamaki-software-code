@@ -7,7 +7,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.inspection import Inspection
-from app.schemas.dashboard import DashboardSummary, FailureReason, TrendPoint
+from app.models.event import AuditEvent
+from app.schemas.dashboard import DashboardSummary, FailureReason, TrendPoint, ProductionBatchInfo, PipelineHealthInfo
+from app.services.processing_manager import processing_manager
 
 _cached_summary: DashboardSummary | None = None
 _cached_summary_time: float = 0.0
@@ -107,6 +109,19 @@ def get_dashboard_summary(
             for day, values in sorted(daily.items())
         ],
         recent_results=recent_results,
+        production_batch=ProductionBatchInfo(
+            batch_code=processing_manager.session_id,
+            status=processing_manager.batch_status,
+            opened_at=processing_manager.batch_opened_at,
+            total=db.scalar(select(func.count(Inspection.id)).where(Inspection.batch_code == processing_manager.session_id)) or 0,
+            passed=db.scalar(select(func.count(Inspection.id)).where(Inspection.batch_code == processing_manager.session_id, Inspection.status == "OK")) or 0,
+            failed=(db.scalar(select(func.count(Inspection.id)).where(Inspection.batch_code == processing_manager.session_id)) or 0) - (db.scalar(select(func.count(Inspection.id)).where(Inspection.batch_code == processing_manager.session_id, Inspection.status == "OK")) or 0),
+        ),
+        pipeline_health=PipelineHealthInfo(
+            **processing_manager.get_pipeline_health(
+                audit_db_write_ok_total=db.scalar(select(func.count(AuditEvent.id))) or 0
+            )
+        ),
         generated_at=datetime.now(timezone.utc),
     )
 

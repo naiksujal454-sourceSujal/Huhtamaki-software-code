@@ -6,7 +6,7 @@ import socket
 import sys
 import time
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -97,7 +97,10 @@ class ProcessingManager:
         self.state: str = "IDLE"  # IDLE, RUNNING, PAUSED, STOPPED
         self.mode: str = "simulation"  # simulation, hardware
         self.active_recipe: Optional[Dict[str, Any]] = None
-        self.session_id: Optional[str] = None
+        self.session_id: Optional[str] = f"BATCH-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+        self.batch_opened_at: Optional[datetime] = datetime.now(timezone.utc)
+        self.batch_status: str = "OPEN"
+        self._oldest_queue_item_time: Optional[float] = None
 
         # Live Metrics & Counters
         self.total_inspected: int = 0
@@ -754,6 +757,44 @@ class ProcessingManager:
             "stop_on_defect": getattr(self, "stop_on_defect", True),
             "counters": self.get_counters(),
             "recent_events": list(self.recent_events)[:20],
+        }
+
+    def get_pipeline_health(self, audit_db_write_ok_total: int = 0) -> Dict[str, Any]:
+        """Calculates genuine real-time queue depth, queue age in seconds, connected WS clients, and audit writes."""
+        q_depth = self._db_queue.qsize()
+        q_age = 0.0
+        if q_depth > 0 and self._oldest_queue_item_time is not None:
+            q_age = round(max(0.0, time.time() - self._oldest_queue_item_time), 1)
+        ws_count = len(ws_manager.active_connections)
+        return {
+            "queue_depth": q_depth,
+            "queue_age_seconds": q_age,
+            "ws_clients": ws_count,
+            "audit_db_write_ok_total": audit_db_write_ok_total,
+        }
+
+    def open_batch(self, batch_code: str) -> Dict[str, Any]:
+        """Opens a new production batch, stamping all subsequent inspections with this batch code."""
+        clean_code = batch_code.strip() if batch_code and batch_code.strip() else f"BATCH-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+        self.session_id = clean_code
+        self.batch_opened_at = datetime.now(timezone.utc)
+        self.batch_status = "OPEN"
+        logger.info(f"Production Batch opened: [{clean_code}]")
+        return {
+            "batch_code": self.session_id,
+            "status": self.batch_status,
+            "opened_at": self.batch_opened_at,
+        }
+
+    def close_batch(self) -> Dict[str, Any]:
+        """Closes the current production batch."""
+        prev_code = self.session_id
+        self.batch_status = "CLOSED"
+        logger.info(f"Production Batch closed: [{prev_code}]")
+        return {
+            "batch_code": prev_code,
+            "status": "CLOSED",
+            "opened_at": self.batch_opened_at,
         }
 
 

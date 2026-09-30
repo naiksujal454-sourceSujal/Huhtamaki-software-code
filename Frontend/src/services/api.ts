@@ -416,6 +416,22 @@ export interface FailureReasonItem {
   count: number;
 }
 
+export interface ProductionBatchInfo {
+  batch_code: string | null;
+  status: 'OPEN' | 'CLOSED';
+  opened_at?: string | null;
+  total: number;
+  passed: number;
+  failed: number;
+}
+
+export interface PipelineHealthInfo {
+  queue_depth: number;
+  queue_age_seconds: number;
+  ws_clients: number;
+  audit_db_write_ok_total: number;
+}
+
 export interface DashboardSummaryData {
   from_date: string | null;
   to_date: string | null;
@@ -443,6 +459,8 @@ export interface DashboardSummaryData {
     expected_code?: string;
     reason?: string;
   }>;
+  production_batch?: ProductionBatchInfo | null;
+  pipeline_health?: PipelineHealthInfo | null;
   generated_at: string;
 }
 
@@ -451,6 +469,24 @@ export async function fetchDashboardSummary(): Promise<DashboardSummaryData> {
     method: 'GET',
   });
   if (!res.ok) throw new Error('Failed to fetch dashboard summary');
+  return await res.json();
+}
+
+export async function openProductionBatch(batchCode: string): Promise<ProductionBatchInfo> {
+  const res = await authFetch(`${API_BASE}/dashboard/batch/open`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ batch_code: batchCode }),
+  });
+  if (!res.ok) throw new Error('Failed to open production batch');
+  return await res.json();
+}
+
+export async function closeProductionBatch(): Promise<ProductionBatchInfo> {
+  const res = await authFetch(`${API_BASE}/dashboard/batch/close`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error('Failed to close production batch');
   return await res.json();
 }
 

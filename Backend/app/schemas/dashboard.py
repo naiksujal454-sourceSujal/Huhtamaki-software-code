@@ -17,6 +17,26 @@ class FailureReason(BaseModel):
     count: int
 
 
+class ProductionBatchInfo(BaseModel):
+    batch_code: str | None = None
+    status: str = "OPEN"
+    opened_at: datetime | None = None
+    total: int = 0
+    passed: int = 0
+    failed: int = 0
+
+
+class PipelineHealthInfo(BaseModel):
+    queue_depth: int = 0
+    queue_age_seconds: float = 0.0
+    ws_clients: int = 0
+    audit_db_write_ok_total: int = 0
+
+
+class OpenBatchRequest(BaseModel):
+    batch_code: str
+
+
 class DashboardSummary(BaseModel):
     from_date: date | None
     to_date: date | None
@@ -33,6 +53,8 @@ class DashboardSummary(BaseModel):
     top_failure_reasons: list[FailureReason]
     trend: list[TrendPoint]
     recent_results: list[dict[str, Any]]
+    production_batch: ProductionBatchInfo | None = None
+    pipeline_health: PipelineHealthInfo | None = None
     generated_at: datetime
 
 

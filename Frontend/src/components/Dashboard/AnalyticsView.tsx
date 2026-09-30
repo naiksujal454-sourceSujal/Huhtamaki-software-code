@@ -8,7 +8,13 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { fetchDashboardSummary, downloadInspectionsCSV, type DashboardSummaryData } from '../../services/api';
+import {
+  fetchDashboardSummary,
+  downloadInspectionsCSV,
+  openProductionBatch,
+  closeProductionBatch,
+  type DashboardSummaryData,
+} from '../../services/api';
 import { RefreshCw, CheckCircle2, XCircle, Clock, ShieldCheck, Activity, FileSpreadsheet, Download, X } from 'lucide-react';
 
 interface AnalyticsViewProps {
@@ -29,6 +35,11 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportPreview, setExportPreview] = useState<{ filename: string; count: number; lines: string[] } | null>(null);
 
+  // Production Batch State
+  const [batchInput, setBatchInput] = useState('');
+  const [isBatchActionLoading, setIsBatchActionLoading] = useState(false);
+  const [batchActionMsg, setBatchActionMsg] = useState<{ text: string; isError?: boolean } | null>(null);
+
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -41,6 +52,39 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
       console.warn('Failed to load dashboard summary:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleOpenBatch = async () => {
+    if (!batchInput.trim()) {
+      setBatchActionMsg({ text: 'Please enter a valid batch or lot code.', isError: true });
+      return;
+    }
+    setIsBatchActionLoading(true);
+    setBatchActionMsg(null);
+    try {
+      const updated = await openProductionBatch(batchInput.trim());
+      setBatchInput('');
+      setBatchActionMsg({ text: `Batch "${updated.batch_code}" opened successfully.` });
+      await loadData();
+    } catch (err: any) {
+      setBatchActionMsg({ text: err.message || 'Failed to open production batch', isError: true });
+    } finally {
+      setIsBatchActionLoading(false);
+    }
+  };
+
+  const handleCloseBatch = async () => {
+    setIsBatchActionLoading(true);
+    setBatchActionMsg(null);
+    try {
+      const closed = await closeProductionBatch();
+      setBatchActionMsg({ text: `Batch "${closed.batch_code}" closed successfully.` });
+      await loadData();
+    } catch (err: any) {
+      setBatchActionMsg({ text: err.message || 'Failed to close production batch', isError: true });
+    } finally {
+      setIsBatchActionLoading(false);
     }
   };
 
@@ -143,12 +187,12 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
         <section className="mb-6">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h2 className="text-xl font-bold text-pixtron-blue">{t('Batch Analytics Dashboard')}</h2>
+              <h2 className="text-xl font-bold text-[#123681]">{t('Analytics Dashboard')}</h2>
             </div>
             <button
               onClick={loadData}
               disabled={isLoading}
-              className="flex items-center gap-1.5 bg-pixtron-blue hover:bg-[#0e2a6b] text-white px-5 py-1.5 rounded-md text-sm font-bold shadow-sm transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 bg-[#123681] hover:bg-[#0e2a6b] text-white px-5 py-1.5 rounded-md text-sm font-bold shadow-sm transition-colors cursor-pointer"
             >
               <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
               <span>{t('Refresh')}</span>
@@ -165,12 +209,81 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
 
         {/* Row 2: Print Verification */}
         <section className="mb-6">
-          <h3 className="text-sm font-bold text-gray-700 mb-3">{t('Print Verification')}</h3>
+          <h3 className="text-sm font-bold text-gray-800 mb-3">{t('Print Verification')}</h3>
           <div className="flex gap-4">
             <StatCard label={t('WITH VERIFICATION')} value={String(withVerification)} valueColor="text-pixtron-blue" />
             <StatCard label={t('PRINT PASS')} value={String(printPass)} valueColor="text-pixtron-green" />
             <StatCard label={t('PRINT FAIL')} value={String(printFail)} valueColor="text-pixtron-red" />
             <StatCard label={t('WITHOUT VERIFICATION')} value={String(withoutVerification)} valueColor="text-gray-600" />
+          </div>
+        </section>
+
+        {/* Row 3: Production Batch */}
+        <section className="mb-6">
+          <h3 className="text-sm font-bold text-gray-800 mb-3">{t('Production Batch')}</h3>
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="text"
+              placeholder="Batch / lot code"
+              value={batchInput}
+              onChange={(e) => setBatchInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleOpenBatch(); }}
+              className="px-3.5 py-1.5 border border-gray-300 rounded text-xs font-mono text-gray-800 focus:outline-none focus:border-[#123681] w-64 shadow-xs bg-white"
+            />
+            <button
+              onClick={handleOpenBatch}
+              disabled={isBatchActionLoading}
+              className="px-4 py-1.5 bg-[#123681] hover:bg-[#0e2a6b] active:bg-[#0a1e4c] text-white text-xs font-bold rounded shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {isBatchActionLoading ? 'Opening...' : 'Open Batch'}
+            </button>
+
+            {summary?.production_batch?.batch_code && (
+              <div className="flex items-center gap-2 ml-2">
+                <span className="text-xs bg-slate-50 text-slate-800 border border-slate-300 px-3 py-1 rounded font-mono font-bold flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${summary.production_batch.status === 'OPEN' ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}></span>
+                  Active: <span className="font-black text-[#123681]">{summary.production_batch.batch_code}</span>
+                  <span className="text-[10px] text-gray-500 uppercase">({summary.production_batch.status})</span>
+                </span>
+                {summary.production_batch.status === 'OPEN' && (
+                  <button
+                    onClick={handleCloseBatch}
+                    disabled={isBatchActionLoading}
+                    className="text-xs text-red-600 hover:text-red-800 font-bold hover:underline cursor-pointer ml-1"
+                  >
+                    Close Batch
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          {batchActionMsg && (
+            <p className={`text-xs mt-2 font-medium ${batchActionMsg.isError ? 'text-red-600' : 'text-emerald-700'}`}>
+              {batchActionMsg.text}
+            </p>
+          )}
+        </section>
+
+        {/* Row 4: Pipeline Health */}
+        <section className="mb-6">
+          <h3 className="text-sm font-bold text-gray-800 mb-3">{t('Pipeline Health')}</h3>
+          <div className="grid grid-cols-4 gap-4">
+            <div className="bg-[#fafafa] border border-gray-200 rounded-md py-4 px-3 flex flex-col items-center justify-center shadow-xs">
+              <span className="text-[11px] font-bold text-gray-500 mb-1 tracking-tight text-center">Queue depth</span>
+              <span className="text-2xl font-black font-mono text-gray-800">{summary?.pipeline_health?.queue_depth ?? 0}</span>
+            </div>
+            <div className="bg-[#fafafa] border border-gray-200 rounded-md py-4 px-3 flex flex-col items-center justify-center shadow-xs">
+              <span className="text-[11px] font-bold text-gray-500 mb-1 tracking-tight text-center">Queue age (s)</span>
+              <span className="text-2xl font-black font-mono text-gray-800">{(summary?.pipeline_health?.queue_age_seconds ?? 0).toFixed(1)}</span>
+            </div>
+            <div className="bg-[#fafafa] border border-gray-200 rounded-md py-4 px-3 flex flex-col items-center justify-center shadow-xs">
+              <span className="text-[11px] font-bold text-gray-500 mb-1 tracking-tight text-center">WS clients</span>
+              <span className="text-2xl font-black font-mono text-gray-800">{summary?.pipeline_health?.ws_clients ?? 1}</span>
+            </div>
+            <div className="bg-[#fafafa] border border-gray-200 rounded-md py-4 px-3 flex flex-col items-center justify-center shadow-xs">
+              <span className="text-[11px] font-bold text-gray-500 mb-1 tracking-tight text-center">audit db write ok total</span>
+              <span className="text-2xl font-black font-mono text-gray-800">{summary?.pipeline_health?.audit_db_write_ok_total ?? 0}</span>
+            </div>
           </div>
         </section>
 
