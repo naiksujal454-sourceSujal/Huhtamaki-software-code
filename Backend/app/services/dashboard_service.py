@@ -8,7 +8,15 @@ from sqlalchemy.orm import Session
 
 from app.models.inspection import Inspection
 from app.models.event import AuditEvent
-from app.schemas.dashboard import DashboardSummary, FailureReason, TrendPoint, ProductionBatchInfo, PipelineHealthInfo
+from app.models.batch import ProductionBatch
+from app.schemas.dashboard import (
+    DashboardSummary,
+    FailureReason,
+    TrendPoint,
+    ProductionBatchInfo,
+    PipelineHealthInfo,
+    BatchHistoryItem,
+)
 from app.services.processing_manager import processing_manager
 
 _cached_summary: DashboardSummary | None = None
@@ -122,6 +130,7 @@ def get_dashboard_summary(
                 audit_db_write_ok_total=db.scalar(select(func.count(AuditEvent.id))) or 0
             )
         ),
+        batch_history=_get_batch_history(db),
         generated_at=datetime.now(timezone.utc),
     )
 
@@ -141,3 +150,78 @@ def _start_of_day(value: date) -> datetime:
 
 def _as_date(value: datetime | None) -> date:
     return value.date() if value is not None else date.today()
+
+
+def _get_batch_history(db: Session) -> list[BatchHistoryItem]:
+    current_code = processing_manager.session_id or f"BATCH-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+
+    # 1. Ensure current active batch is recorded in DB
+    active_b = db.scalar(select(ProductionBatch).where(ProductionBatch.batch_code == current_code))
+    if not active_b:
+        active_b = ProductionBatch(
+            batch_code=current_code,
+            status=processing_manager.batch_status.lower(),
+            opened_at=processing_manager.batch_opened_at or datetime.now(timezone.utc),
+        )
+        db.add(active_b)
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+
+    all_batches = list(db.scalars(select(ProductionBatch).order_by(ProductionBatch.opened_at.desc())).all())
+    known_codes = {b.batch_code for b in all_batches}
+
+    # 2. Discover any past batch codes from stored inspections
+    past_codes = db.scalars(
+        select(Inspection.batch_code)
+        .where(Inspection.batch_code.is_not(None), Inspection.batch_code != "")
+        .distinct()
+    ).all()
+    for pc in past_codes:
+        if pc and pc not in known_codes:
+            earliest_insp = db.scalar(
+                select(Inspection.created_at)
+                .where(Inspection.batch_code == pc)
+                .order_by(Inspection.created_at.asc())
+                .limit(1)
+            )
+            nb = ProductionBatch(
+                batch_code=pc,
+                status="closed",
+                opened_at=earliest_insp or datetime.now(timezone.utc),
+            )
+            db.add(nb)
+            try:
+                db.commit()
+                all_batches.append(nb)
+                known_codes.add(pc)
+            except Exception:
+                db.rollback()
+
+    all_batches.sort(key=lambda x: x.opened_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+
+    items: list[BatchHistoryItem] = []
+    for b in all_batches:
+        st = processing_manager.batch_status.lower() if b.batch_code == processing_manager.session_id else b.status.lower()
+        p_cnt = db.scalar(
+            select(func.count(Inspection.id)).where(Inspection.batch_code == b.batch_code, Inspection.status == "OK")
+        ) or 0
+        f_cnt = db.scalar(
+            select(func.count(Inspection.id)).where(Inspection.batch_code == b.batch_code, Inspection.status != "OK")
+        ) or 0
+        opened_str = b.opened_at.strftime("%d/%m/%Y, %I:%M:%S %p").lower() if b.opened_at else None
+
+        items.append(
+            BatchHistoryItem(
+                code=b.batch_code,
+                status=st,
+                pass_count=p_cnt,
+                fail_count=f_cnt,
+                total_count=p_cnt + f_cnt,
+                opened_at=b.opened_at,
+                opened_formatted=opened_str,
+            )
+        )
+    return items
+

@@ -432,6 +432,16 @@ export interface PipelineHealthInfo {
   audit_db_write_ok_total: number;
 }
 
+export interface BatchHistoryItem {
+  code: string;
+  status: string;
+  pass_count: number;
+  fail_count: number;
+  total_count: number;
+  opened_at?: string | null;
+  opened_formatted?: string | null;
+}
+
 export interface DashboardSummaryData {
   from_date: string | null;
   to_date: string | null;
@@ -461,6 +471,7 @@ export interface DashboardSummaryData {
   }>;
   production_batch?: ProductionBatchInfo | null;
   pipeline_health?: PipelineHealthInfo | null;
+  batch_history?: BatchHistoryItem[];
   generated_at: string;
 }
 

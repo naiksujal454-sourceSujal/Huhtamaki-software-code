@@ -37,6 +37,16 @@ class OpenBatchRequest(BaseModel):
     batch_code: str
 
 
+class BatchHistoryItem(BaseModel):
+    code: str
+    status: str
+    pass_count: int
+    fail_count: int
+    total_count: int
+    opened_at: datetime | None = None
+    opened_formatted: str | None = None
+
+
 class DashboardSummary(BaseModel):
     from_date: date | None
     to_date: date | None
@@ -55,6 +65,7 @@ class DashboardSummary(BaseModel):
     recent_results: list[dict[str, Any]]
     production_batch: ProductionBatchInfo | None = None
     pipeline_health: PipelineHealthInfo | None = None
+    batch_history: list[BatchHistoryItem] = []
     generated_at: datetime
 
 

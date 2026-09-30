@@ -153,14 +153,9 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
   const printPass = summary ? summary.print_pass : 0;
   const printFail = summary ? summary.print_fail : 0;
   const withoutVerification = summary ? summary.without_print_verification : 0;
-
-  const topFailures = summary?.top_failure_reasons && summary.top_failure_reasons.length > 0
-    ? summary.top_failure_reasons
-    : [
-      { reason: 'CODE_MISMATCH', count: failedCount > 0 ? failedCount : 0 },
-      { reason: 'MISSING_GAP_SENSOR_PULSE', count: 0 },
-      { reason: 'SCANNER_READ_TIMEOUT', count: 0 },
-    ];
+  const topFailures = summary?.top_failure_reasons || [];
+  const defectBreakdown = summary?.defect_breakdown || [];
+  const batchHistory = summary?.batch_history || [];
 
   const recentResults = summary?.recent_results || [];
 
@@ -308,49 +303,107 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
 
         {/* Defect Breakdown & Top Failure Reasons */}
         <section className="flex gap-6 mb-6">
-          <div className="flex-1 border border-gray-200 rounded-md p-4 bg-slate-50">
-            <h3 className="text-sm font-bold text-gray-700 mb-3">Optical Barcode Subsystem Status</h3>
-            <table className="w-full text-sm">
-              <tbody>
-                <tr className="border-b border-gray-200">
-                  <td className="py-2 text-gray-600">Scanner Imager (Data Matrix 220)</td>
-                  <td className="py-2 text-right font-mono font-bold text-emerald-600">ONLINE</td>
-                </tr>
-                <tr className="border-b border-gray-200">
-                  <td className="py-2 text-gray-600">PLC Modbus TCP Link (Coil 0/1)</td>
-                  <td className="py-2 text-right font-mono font-bold text-emerald-600">SYNCHRONIZED</td>
-                </tr>
-                <tr className="border-b border-gray-200">
-                  <td className="py-2 text-gray-600">Database Audit Persistence</td>
-                  <td className="py-2 text-right font-mono font-bold text-emerald-600">ACTIVE</td>
-                </tr>
-                <tr>
-                  <td className="py-2 text-gray-600">Total Defect Events</td>
-                  <td className="py-2 text-right font-mono font-bold text-red-600">{failedCount}</td>
-                </tr>
-              </tbody>
-            </table>
+          {/* Left Card: Defect Breakdown */}
+          <div className="flex-1 border border-gray-200 rounded-md p-4 bg-white shadow-xs">
+            <h3 className="text-sm font-bold text-gray-800 mb-3">{t('Defect Breakdown')}</h3>
+            {defectBreakdown.length === 0 ? (
+              <p className="text-xs text-gray-400 py-6 text-center">No defects recorded in current period</p>
+            ) : (
+              <div className="space-y-2">
+                {defectBreakdown.map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-none text-xs">
+                    <span className="text-gray-700 font-medium capitalize">
+                      {item.reason.replace(/_/g, ' ')}
+                    </span>
+                    <span className="font-mono font-bold text-gray-800 text-sm">
+                      {item.count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="flex-1 border border-gray-200 rounded-md p-4 bg-white">
-            <h3 className="text-sm font-bold text-gray-700 mb-3">{t('Top Failure Reasons')}</h3>
-            <table className="w-full text-sm">
+          {/* Right Card: Top Failure Reasons */}
+          <div className="flex-1 border border-gray-200 rounded-md p-4 bg-white shadow-xs">
+            <h3 className="text-sm font-bold text-gray-800 mb-3">{t('Top Failure Reasons')}</h3>
+            <table className="w-full text-xs">
               <thead>
-                <tr className="bg-gray-50 text-gray-600 text-left">
-                  <th className="py-1 px-2 font-bold rounded-l-md">{t('Reason')}</th>
-                  <th className="py-1 px-2 font-bold text-right rounded-r-md">{t('Count')}</th>
+                <tr className="bg-gray-50 text-gray-600 text-left border-b border-gray-100">
+                  <th className="py-2 px-3 font-bold rounded-l-md">{t('Reason')}</th>
+                  <th className="py-2 px-3 font-bold text-right rounded-r-md">{t('Count')}</th>
                 </tr>
               </thead>
               <tbody>
-                {topFailures.map((item, idx) => (
-                  <tr key={idx} className="border-b border-gray-100 last:border-none">
-                    <td className="py-1.5 px-2 text-gray-700 font-mono text-xs">{item.reason}</td>
-                    <td className="py-1.5 px-2 text-right font-mono font-bold text-red-600">{item.count}</td>
+                {topFailures.length === 0 ? (
+                  <tr>
+                    <td colSpan={2} className="py-6 text-center text-gray-400">
+                      No failure reasons recorded
+                    </td>
                   </tr>
-                ))}
+                ) : (
+                  topFailures.map((item, idx) => (
+                    <tr key={idx} className="border-b border-gray-50 last:border-none hover:bg-gray-50/50">
+                      <td className="py-2 px-3 text-gray-700 font-mono text-xs">{item.reason}</td>
+                      <td className="py-2 px-3 text-right font-mono font-bold text-red-600">{item.count}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
+        </section>
+
+        {/* Batch History Section (As per Screenshot) */}
+        <section className="mb-6 border border-gray-200 rounded-md overflow-hidden bg-white shadow-xs">
+          <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+            <h3 className="text-sm font-bold text-gray-800">{t('Batch History')}</h3>
+            <span className="text-xs text-gray-500 font-mono">{batchHistory.length} batches tracked</span>
+          </div>
+          <table className="w-full text-xs text-left">
+            <thead className="bg-gray-100/70 text-gray-600 font-bold border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-2.5 font-bold">Code</th>
+                <th className="px-4 py-2.5 font-bold">Status</th>
+                <th className="px-4 py-2.5 font-bold">Pass</th>
+                <th className="px-4 py-2.5 font-bold">Fail</th>
+                <th className="px-4 py-2.5 font-bold">Opened</th>
+              </tr>
+            </thead>
+            <tbody>
+              {batchHistory.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="text-center py-6 text-xs text-gray-400">
+                    No batches opened yet. Use "Open Batch" above to start a production batch.
+                  </td>
+                </tr>
+              ) : (
+                batchHistory.map((b, idx) => {
+                  const isOpen = b.status.toLowerCase() === 'open';
+                  return (
+                    <tr key={idx} className={`border-b border-gray-100 last:border-none ${isOpen ? 'bg-blue-50/30' : 'hover:bg-gray-50/50'}`}>
+                      <td className="px-4 py-2.5 font-mono font-bold text-gray-800 flex items-center gap-1.5">
+                        {isOpen && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>}
+                        <span>{b.code}</span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          isOpen ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'text-gray-500 font-mono'
+                        }`}>
+                          {b.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 font-mono font-bold text-emerald-600">{b.pass_count}</td>
+                      <td className="px-4 py-2.5 font-mono font-bold text-red-600">{b.fail_count}</td>
+                      <td className="px-4 py-2.5 font-mono text-gray-600">
+                        {b.opened_formatted || (b.opened_at ? new Date(b.opened_at).toLocaleString() : '-')}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </section>
 
         {/* Recent Results from PostgreSQL Database */}

@@ -29,6 +29,7 @@ def init_database() -> None:
         AuditEvent,
         AuthSession,
         Inspection,
+        ProductionBatch,
         RolePrivilege,
         ServiceDetail,
         SystemSetting,
