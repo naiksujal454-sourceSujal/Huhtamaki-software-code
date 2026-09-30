@@ -56,7 +56,7 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
   // Scanner Tab State
   const [exposureTime, setExposureTime] = useState(2500);
   const [analogGain, setAnalogGain] = useState(6);
-  const [triggerMode, setTriggerMode] = useState('Hardware Optical Trigger');
+  const [triggerMode, setTriggerMode] = useState('Hardware Gap Sensor Trigger');
   const [scannerFeedback, setScannerFeedback] = useState<string | null>(null);
 
   // Lights Tab State
@@ -519,7 +519,7 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
                     onChange={(e) => setTriggerMode(e.target.value)}
                     className="w-full border border-gray-300 rounded px-3 py-2 text-xs font-semibold text-gray-800 cursor-pointer"
                   >
-                    <option value="Hardware Optical Trigger">Hardware Optical Trigger (Line 1 Input - Photocell)</option>
+                    <option value="Hardware Gap Sensor Trigger">Hardware Gap Sensor Trigger (PLC DI-0 Gap Sensor)</option>
                     <option value="Continuous Free Run">Continuous Free Run (Video Stream)</option>
                     <option value="Software Command Trigger">Software Command Trigger (Manual / API)</option>
                   </select>

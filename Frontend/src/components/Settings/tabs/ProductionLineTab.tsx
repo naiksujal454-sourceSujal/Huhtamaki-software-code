@@ -21,7 +21,7 @@ const ProductionLineTab: React.FC = () => {
   const [plantLocation, setPlantLocation] = useState('Huhtamaki Foodservice India - Plant 1');
   const [targetPpm, setTargetPpm] = useState('500');
   const [pitchSpacing, setPitchSpacing] = useState('120');
-  const [triggerMode, setTriggerMode] = useState('Photoelectric Proximity (DI-0)');
+  const [triggerMode, setTriggerMode] = useState('Gap Sensor (DI-0)');
   const [debounceMs, setDebounceMs] = useState('12');
   
   // Rejection parameters
@@ -123,7 +123,7 @@ const ProductionLineTab: React.FC = () => {
               <Layout size={20} className="text-[#153472]" />
               Production Line Setup
             </h2>
-            <p className="text-xs text-gray-500">Configure conveyor parameters, optical trigger timing, and pneumatic defect rejection.</p>
+            <p className="text-xs text-gray-500">Configure conveyor parameters, gap sensor trigger timing, and pneumatic defect rejection.</p>
           </div>
           <span className="bg-emerald-50 text-emerald-700 text-xs px-2.5 py-1 rounded-full border border-emerald-200 font-bold flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -168,11 +168,11 @@ const ProductionLineTab: React.FC = () => {
           </div>
         </div>
 
-        {/* Section 2: Conveyor & Optical Trigger Synchronization */}
+        {/* Section 2: Conveyor & Gap Sensor Trigger Synchronization */}
         <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
           <h3 className="text-xs font-bold uppercase text-gray-600 mb-3 flex items-center gap-2">
             <Activity size={14} className="text-[#153472]" />
-            Conveyor Speed & Optical Sensor Synchronization
+            Conveyor Speed & Gap Sensor Synchronization
           </h3>
           <div className="grid grid-cols-4 gap-4">
             <div>
@@ -200,7 +200,7 @@ const ProductionLineTab: React.FC = () => {
                 onChange={(e) => setTriggerMode(e.target.value)}
                 className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-xs bg-white focus:outline-[#153472]"
               >
-                <option value="Photoelectric Proximity (DI-0)">Photoelectric Proximity (DI-0)</option>
+                <option value="Gap Sensor (DI-0)">Gap Sensor (DI-0)</option>
                 <option value="Laser Through-Beam (DI-1)">Laser Through-Beam (DI-1)</option>
                 <option value="Rotary Encoder Pulses (Phase A/B)">Rotary Encoder Pulses (Phase A/B)</option>
                 <option value="Continuous Free-Run (Auto-Sync)">Continuous Free-Run (Auto-Sync)</option>
@@ -290,7 +290,7 @@ const ProductionLineTab: React.FC = () => {
               className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 border border-gray-300 text-gray-700 px-3.5 py-2 rounded text-xs font-bold transition-colors cursor-pointer"
             >
               <Activity size={14} className="text-blue-600" />
-              Test Optical Trigger Sensor (DI-0)
+              Test Gap Sensor (DI-0)
             </button>
           </div>
 

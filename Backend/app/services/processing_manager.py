@@ -645,7 +645,7 @@ class ProcessingManager:
                     "alert_label": cfg.get("label", "Trigger Sensor & Proximity Alerts (DI-0)"),
                     "priority": cfg.get("priority", "Medium"),
                     "reason": "MISSING_GAP_SENSOR_PULSE",
-                    "description": "Photoelectric gap sensor (DI-0) pulse debounced / missing on container feed",
+                    "description": "Industrial gap sensor (DI-0) pulse debounced / missing on container feed",
                 }
             elif alert_kind == 2 and configs.get("scanner", {}).get("displayed", True) and not configs.get("scanner", {}).get("suppressed", False):
                 # 3. Scanner / Camera Communication Alert (Optical read dropped / unreadable label)

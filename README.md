@@ -104,7 +104,17 @@ When a label image is uploaded, the backend executes an optimized multi-stage co
 
 ---
 
+<<<<<<< HEAD
 ## 4. Barcode Comparison Logic
+=======
+## 4. Live Inspection & Barcode Comparison Logic
+
+### 4.1 Inspection Execution Loop
+1. The operator clicks **START** on the top control bar. The state machine switches from `IDLE` to `RUNNING`.
+2. As products move along the conveyor, a high-precision **Gap Sensor (DI-0)** triggers the **Datalogic Data Matrix 220** scanner.
+3. The scanner captures the image, decodes the barcode payload, and streams the barcode string and image frame over industrial Ethernet (`192.168.125.20:51235`) to the backend.
+4. Total inspection cycle time is **50ms - 95ms**.
+>>>>>>> 3c82a7d (chnaged the readme.md and other files)
 
 ### 4.2 Exact Barcode Matching Logic (`compare_code`)
 The core verification function runs character-by-character comparison:
@@ -191,7 +201,12 @@ When a defect is detected (barcode mismatch, unreadable code, or damaged label),
   - Notification that the line has been halted by safety interlocks.
 - The email is dispatched in a background asynchronous thread via SMTP to configured supervisors (`supervisor@huhtamaki.com`).
 
+<<<<<<< HEAD
 ### 5.5 Critical Alarm Modal on HMI & Recovery
+=======
+
+### 5.4 Critical Alarm Modal on HMI & Recovery
+>>>>>>> 3c82a7d (chnaged the readme.md and other files)
 - The WebSocket pushes a `CRITICAL_ALARM` event to the HMI in `< 1ms`.
 - The screen locks into the high-contrast **Critical Defect Modal**:
   - Displays side-by-side comparison: Scanned image with **Red Bounding Box** vs Expected Reference.
@@ -270,6 +285,11 @@ When a defect is detected (barcode mismatch, unreadable code, or damaged label),
   - **Coil 1**: Factory Alarm Buzzer & Red Tower Light (1 = Sound Alarm, 0 = Silence).
   - **Coil 2**: Pneumatic Rejection Solenoid Valve Pulse.
   - **Discrete Input 0 (DI-0)**: Industrial Gap Sensor (Slot/Fork Gap Sensor for high-speed container gap detection).
+<<<<<<< HEAD
+=======
+
+---
+>>>>>>> 3c82a7d (chnaged the readme.md and other files)
 
 ## 7. HMI Design System & Visual Aesthetics
 
