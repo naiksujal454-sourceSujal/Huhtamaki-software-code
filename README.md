@@ -48,7 +48,7 @@ The **Huhtamaki Vision Inspection System** is an enterprise-grade, high-speed in
 
 ## 2. End-to-End System Workflow (How It Works)
 
-The software coordinates physical hardware, network sockets, backend state machines, and the frontend operator interface through a clear 9-phase operational workflow:
+The software coordinates physical hardware, network sockets, backend state machines, and the frontend operator interface through a clear operational workflow:
 
 ```
 [1. System Boot] ─────────► [2. Operator Login] ─────────► [3. Open Production Batch]
@@ -60,14 +60,13 @@ The software coordinates physical hardware, network sockets, backend state machi
          └─── If NOK (Fail) ──► 1. Line Stops (PLC Coil 0=1)
                                 2. Buzzer Rings (PLC Coil 1=1)
                                 3. Email Alert Dispatched
-                                4. Pneumatic Ejector Fires
-                                5. HMI Critical Alarm Modal Appears
+                                4. HMI Critical Alarm Modal Appears
                                      │
-                                [7. Operator Acknowledges & Resumes]
+                                [5. Operator Acknowledges & Resumes]
                                      │
-                                [8. Audit Log Committed]
+                                [6. Audit Log Committed]
                                      │
-                                [9. Analytics & Batch History Recorded]
+                                [7. Analytics & Batch History Recorded]
 ```
 
 1. **Boot**: The FastAPI backend initializes, sets up database tables (`app.db`), starts the asynchronous database queue worker, and verifies physical hardware (CPU, RAM, NICs).
