@@ -36,11 +36,10 @@
 
 ## 1. Overview & Purpose
 
-The **Huhtamaki Vision Inspection System** is an enterprise-grade, high-speed industrial quality control and human-machine interface (HMI) platform. Built specifically for Huhtamaki packaging and container manufacturing facilities, it provides automated optical verification of barcodes, DataMatrix symbols, seals, and product labels on high-speed conveyor belts.
+The **Huhtamaki Vision Inspection System** is an enterprise-grade, high-speed industrial quality control and human-machine interface (HMI) platform. Built specifically for Huhtamaki packaging and container manufacturing facilities, it provides automated optical verification of barcodes.
 
 ### Key Capabilities:
 - **Dedicated Industrial Imager**: Interfaced with a **Datalogic Data Matrix 220** optical sensor via industrial Ethernet TCP/IP (`192.168.125.20:51235`).
-- **Sub-Millisecond Barcode Verification**: Inspects barcodes at line speeds up to **500+ PPM (Parts Per Minute)** with cycle latencies between **50ms and 95ms**.
 - **Instant Tri-Action Safety on Failure**: On any defect or code mismatch, the system immediately **halts the conveyor line**, triggers a **loud acoustic buzzer & red light**, sends an **automated email alert to supervisors**, and activates a **pneumatic ejector valve**.
 - **Real-Time Production Batch Accounting**: Tracks active batches, calculates live Pass and Fail counts, and maintains persistent batch history records.
 - **Dual Deployment**: Runs seamlessly in any modern web browser (`http://localhost:5173`) or as a hardened standalone Windows Desktop Application (`.exe`) powered by Tauri v2.
@@ -72,9 +71,9 @@ The software coordinates physical hardware, network sockets, backend state machi
 ```
 
 1. **Boot**: The FastAPI backend initializes, sets up database tables (`app.db`), starts the asynchronous database queue worker, and verifies physical hardware (CPU, RAM, NICs).
-2. **Login**: Operators sign in using secure Argon2 credentials. Roles (`ADMIN`, `OPERATOR`, `MAINTENANCE`) dictate feature accessibility.
+2. **Login**: Operators sign in using secure Argon2 credentials. Roles (`ADMIN`, `OPERATOR`, `USER`) dictate feature accessibility.
 3. **Open Batch**: The operator opens a production batch (e.g., `LOT-2026-X01`). All subsequent inspections are stamped with this batch code.
-4. **Arm Recipe**: The operator selects the active recipe preset. The expected barcode and reference images load into RAM in under 5ms.
+4. **Recipe**: The operator selects the active recipe preset. The expected barcode and reference images load into RAM in under 5ms.
 5. **Inspect**: Conveyor belt triggers the Datalogic Data Matrix 220 sensor. Scanned barcode is transmitted to the backend over TCP/IP socket.
 6. **Compare**: The backend executes `compare_code(scanned, expected)`.
 7. **Action**: If PASS, live counters update. If FAIL, the conveyor line stops, buzzer sounds, email dispatches, and pneumatic rejector ejects the container.
@@ -87,11 +86,10 @@ The software coordinates physical hardware, network sockets, backend state machi
 
 ### 3.1 How Recipes Are Created
 Operators or supervisors can create new inspection recipes directly from the HMI:
-1. Open the **Settings** view and navigate to the **Recipe Setup** tab.
-2. Click **Create New Recipe**.
-3. Enter the Recipe Name (e.g. `Coke 500ml Label`), SKU category, and optional notes.
-4. Upload a reference product photograph or label artwork (`.png` or `.jpg`).
-5. Click **Extract Barcode & Save**.
+1. Click **Create New Recipe**.
+2. Enter the Recipe Name (e.g. `Coke 500ml Label`), SKU category, and optional notes.
+3. Upload a reference product photograph or label artwork (`.png` or `.jpg`).
+4. Click **Extract Barcode & Save**.
 
 ### 3.2 Barcode Extraction Pipeline & Speed (~15ms - 50ms)
 When a label image is uploaded, the backend executes an optimized multi-stage computer vision pipeline (`barcode_roi_processor.py`):
@@ -112,9 +110,9 @@ When a label image is uploaded, the backend executes an optimized multi-stage co
 
 ### 4.1 Inspection Execution Loop
 1. The operator clicks **START** on the top control bar. The state machine switches from `IDLE` to `RUNNING`.
-2. As products move along the conveyor, a photoelectric optical trigger activates the **Datalogic Data Matrix 220** scanner.
+2. a high-precision **Gap Sensor (DI-0)** triggers the **Datalogic Data Matrix 220** scanner.
 3. The scanner captures the image, decodes the barcode payload, and streams the barcode string and image frame over industrial Ethernet (`192.168.125.20:51235`) to the backend.
-4. Total inspection cycle time is **50ms - 95ms**, allowing the line to run at **500+ PPM**.
+4. Total inspection cycle time is **50ms - 95ms**.
 
 ### 4.2 Exact Barcode Matching Logic (`compare_code`)
 The core verification function runs character-by-character comparison:
@@ -201,10 +199,6 @@ When a defect is detected (barcode mismatch, unreadable code, or damaged label),
   - Notification that the line has been halted by safety interlocks.
 - The email is dispatched in a background asynchronous thread via SMTP to configured supervisors (`supervisor@huhtamaki.com`).
 
-### 5.4 Pneumatic Defect Rejection
-- An electrical trigger signal is dispatched to the pneumatic ejector solenoid valve.
-- High-pressure compressed air fires, physically diverting the defective container off the conveyor belt into the secure reject chute.
-
 ### 5.5 Critical Alarm Modal on HMI & Recovery
 - The WebSocket pushes a `CRITICAL_ALARM` event to the HMI in `< 1ms`.
 - The screen locks into the high-contrast **Critical Defect Modal**:
@@ -265,7 +259,7 @@ When a defect is detected (barcode mismatch, unreadable code, or damaged label),
 
 | Layer | Component | Technology | Role & Key Features |
 | :--- | :--- | :--- | :--- |
-| **Frontend HMI** | Single Page App | React 19, TypeScript, Vite 6 | High-speed component rendering, zero-lag UI, responsive layouts. |
+| **Frontend HMI** | Single Page App | React 19, TypeScript, Vite 6 | 
 | **Frontend Styling**| Styling System | Tailwind CSS v4, Lucide Icons | Clean industrial theme tokens, glassmorphism, responsive micro-animations. |
 | **Desktop App** | Native Container | Tauri v2 (Rust runtime) | Lightweight Windows `.exe` application with native system performance. |
 | **Backend Gateway** | Web Server | FastAPI, Uvicorn, Python 3.12 | Asynchronous ASGI server delivering sub-millisecond REST and WebSocket APIs. |
@@ -284,9 +278,7 @@ When a defect is detected (barcode mismatch, unreadable code, or damaged label),
   - **Coil 0**: Conveyor Motor Interlock (1 = Stop Line, 0 = Run Line).
   - **Coil 1**: Factory Alarm Buzzer & Red Tower Light (1 = Sound Alarm, 0 = Silence).
   - **Coil 2**: Pneumatic Rejection Solenoid Valve Pulse.
-  - **Discrete Input 0 (DI-0)**: Photoelectric Product Present Trigger Sensor.
-
----
+  - **Discrete Input 0 (DI-0)**: Industrial Gap Sensor (Slot/Fork Gap Sensor for high-speed container gap detection).
 
 ## 7. HMI Design System & Visual Aesthetics
 
