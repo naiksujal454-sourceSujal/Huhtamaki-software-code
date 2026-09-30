@@ -108,6 +108,8 @@ class ProcessingManager:
         self.total_nok: int = 0
         self.pass_rate: float = 100.0
         self.current_ppm: int = 0
+        self.current_mpm: int = 0
+        self.rated_speed_mpm: int = 220
 
         # Timing and History
         self.start_time: Optional[float] = None
@@ -201,6 +203,14 @@ class ProcessingManager:
         self.active_recipe = recipe
         logger.info(f"ProcessingManager active recipe set to: {recipe.get('name')} (Target: {recipe.get('targetCode')})")
 
+        # Automatically load and arm Datalogic Matrix 220 for 220 MPM label sheet inspection
+        try:
+            from app.services.datalogic_service import load_and_arm_preset
+            recipe_id = recipe.get("id") or recipe.get("name") or "recipe1"
+            load_and_arm_preset(str(recipe_id))
+        except Exception as e:
+            logger.warning(f"Could not load Matrix 220 preset config: {e}")
+
         self.simulate_defects = True
         self.stop_on_defect = True
         self.force_next_defect = False
@@ -246,6 +256,7 @@ class ProcessingManager:
             self.start_time = time.time()
 
         self.state = "RUNNING"
+        self.current_mpm = self.active_recipe.get("rated_speed_mpm", 220) if self.active_recipe else 220
         self.alarm_active = False
         self.alarm_details = None
         self.buzzer_active = False
@@ -286,6 +297,7 @@ class ProcessingManager:
 
     async def stop(self) -> Dict[str, Any]:
         self.state = "STOPPED"
+        self.current_mpm = 0
         self._resume_event.set()
         if self._task and not self._task.done():
             self._task.cancel()
@@ -741,6 +753,7 @@ class ProcessingManager:
             "nok_count": self.total_nok,
             "pass_rate": self.pass_rate,
             "current_ppm": self.current_ppm,
+            "current_mpm": self.current_mpm if self.state in ["RUNNING", "PAUSED"] else 0,
             "session_id": self.session_id,
         }
 

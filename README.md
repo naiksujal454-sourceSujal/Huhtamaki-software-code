@@ -35,10 +35,13 @@
 
 ## 1. Overview & Purpose
 
-The **Huhtamaki Vision Inspection System** is an enterprise-grade, high-speed industrial quality control and human-machine interface (HMI) platform. Built specifically for Huhtamaki packaging and container manufacturing facilities, it provides automated optical verification of 1D barcodes.
+The **Huhtamaki Vision Inspection System** is an enterprise-grade, high-speed industrial quality control and human-machine interface (HMI) platform. Built specifically for Huhtamaki label converting, printing, and packaging facilities, it provides automated optical verification of **1D barcodes printed on label sheets** running at continuous line speeds of **220 MPM (Meters Per Minute)**.
 
 ### Key Capabilities:
-- **Dedicated Industrial Imager**: Interfaced with a **Datalogic Data Matrix 220** optical sensor via industrial Ethernet TCP/IP (`192.168.125.20:51235`).
+- **220 MPM High-Speed Label Sheet Inspection**: Continuously verifies 1D barcodes on moving label sheets at **220 MPM ($3.67\text{ m/s}$)** with ultra-short exposure ($80\,\mu s - 120\,\mu s$) and pulsed strobe to eliminate motion blur.
+- **Dedicated Industrial Imager**: Interfaced with a **Datalogic Data Matrix 220** optical sensor via industrial Ethernet TCP/IP (`192.168.125.20:51235`) supporting Host Mode Programming (HMP).
+- **Preset-Linked Optical Configurations**: Automatically configures exposure, electronic liquid lens focus, gain, and DL.CODE job slots when an operator selects a product recipe preset.
+- **Hardware Gap Sensor Synchronization**: Uses an industrial **Gap Sensor (DI-0)** to detect label sheet gaps and trigger the imager with sub-millisecond precision.
 - **Instant Tri-Action Safety on Failure**: On any defect or code mismatch, the system immediately **halts the conveyor line**, triggers a **loud acoustic buzzer & red light**, sends an **automated email alert to supervisors**, and activates a **pneumatic ejector valve**.
 - **Real-Time Production Batch Accounting**: Tracks active batches, calculates live Pass and Fail counts, and maintains persistent batch history records.
 - **Dual Deployment**: Runs seamlessly in any modern web browser (`http://localhost:5173`) or as a hardened standalone Windows Desktop Application (`.exe`) powered by Tauri v2.
@@ -284,9 +287,56 @@ When a defect is detected (barcode mismatch, unreadable code, or damaged label),
   - **Coil 0**: Conveyor Motor Interlock (1 = Stop Line, 0 = Run Line).
   - **Coil 1**: Factory Alarm Buzzer & Red Tower Light (1 = Sound Alarm, 0 = Silence).
   - **Coil 2**: Pneumatic Rejection Solenoid Valve Pulse.
+<<<<<<< HEAD
   - **Discrete Input 0 (DI-0)**: Industrial Gap Sensor (Slot/Fork Gap Sensor for high-speed container gap detection).
 <<<<<<< HEAD
 =======
+=======
+  - **Discrete Input 0 (DI-0)**: Industrial Gap Sensor (Slot/Fork Gap Sensor for high-speed label sheet gap detection).
+
+### 6.4 Datalogic Matrix 220 Configuration & Preset Management
+
+#### A. Host Mode Programming (HMP) Protocol
+The software communicates with the Matrix 220 over an Ethernet TCP/IP socket (`192.168.125.20:51235`) using Datalogic's standard **Host Mode Programming (HMP)** escape sequences:
+1. **Enter Host Mode**: `<ESC>[C` -> Reader responds with `<ESC>H`
+2. **Enter Programming Mode**: `<ESC>[B` -> Reader responds with `<ESC>Q`
+3. **Send Optical / Job Commands**:
+   - `exposure_us` ($80\,\mu s - 150\,\mu s$): `<ESC>IEX{val}\r`
+   - `focus_distance_mm` ($80\,\text{mm} - 400\,\text{mm}$): `<ESC>IFC{val}\r`
+   - `gain` ($1\times - 16\times$): `<ESC>IGN{val}\r`
+   - `job_id` (Job 1 to 16): `<ESC>IJB{val}\r`
+4. **Instant RAM Arming**: `<ESC>IA!\r` (Applies changes directly to volatile RAM in $<15\text{ms}$ without wearing out onboard Flash EEPROM).
+5. **Exit Host Mode & Resume Run Mode**: `<ESC>[A` -> Reader arms in RUN mode and confirms with `<ESC>X`.
+
+#### B. Freezing 1D Barcode Motion Blur at 220 MPM ($3.67\text{ m/s}$)
+At a line speed of **220 MPM**, the label sheet travels at **3.67 millimeters per millisecond**. A standard exposure time (e.g. $2000\,\mu s$) would cause significant motion blur on 1D barcode bars.
+- **Ultra-Short Exposure ($80\,\mu s - 120\,\mu s$)**: Limits sheet travel during exposure to less than $0.3\text{ mm}$, keeping narrow 1D barcode bars razor-sharp.
+- **High-Power Pulsed LED Strobe**: Provides high-intensity localized illumination for the duration of the short exposure.
+- **Electronic Liquid Lens Focus**: Automatically adjusts focal depth ($80\text{mm} - 400\text{mm}$) electronically with zero moving mechanical parts.
+- **Gap Sensor Trigger (DI-0)**: Detects the label sheet gap or pitch pulse and triggers the Matrix 220 at the exact inspection window.
+
+#### C. Preset Saving & Automatic Loading Workflow
+1. **Saving Configs per Preset**:
+   - Quality engineers tune exposure, focus, gain, and DL.CODE job slot in the HMI.
+   - Saved via `POST /api/datalogic/preset/{recipe_id}`.
+2. **Automatic Loading on Preset Selection**:
+   - When an operator selects a recipe (e.g., *Coke 500ml Label* or *Parle-G 100g Sheet*) or clicks **START**, `processing_manager.set_active_recipe` automatically calls `datalogic_service.load_and_arm_preset(recipe_id)`.
+   - The backend transmits the HMP sequence over TCP in $<15\text{ms}$.
+   - The liquid lens adjusts its focus, the sensor exposure/gain updates, and the reader is armed for that specific label sheet.
+
+#### D. Datalogic Matrix 220 REST API Endpoints
+
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/api/datalogic/status` | `GET` | Live diagnostics, TCP latency, active optical settings, liquid lens status, and 220 MPM inspection profile. |
+| `/api/datalogic/ping` | `GET` | Fast TCP socket ping test to `192.168.125.20:51235`. |
+| `/api/datalogic/configure` | `POST` | Dispatches HMP commands directly to Matrix 220 (exposure, focus, gain, lighting, line speed). |
+| `/api/datalogic/select-job` | `POST` | Switches active onboard DL.CODE job (Job 1 to 16) in under 15ms. |
+| `/api/datalogic/trigger-test` | `POST` | Dispatches software test trigger (`<ESC>T`) to acquire and decode a label sheet barcode. |
+| `/api/datalogic/preset/{recipe_id}` | `GET` | Retrieves saved Matrix 220 optical configuration for a specific preset. |
+| `/api/datalogic/preset/{recipe_id}` | `POST` | Saves/updates Matrix 220 optical calibration parameters for a specific preset. |
+| `/api/datalogic/preset/{recipe_id}/load` | `POST` | Loads saved preset config and immediately arms the Matrix 220 over TCP socket. |
+>>>>>>> 8666d16 (feat: Datalogic Matrix 220 HMP endpoints, preset arming, and 220 MPM label sheet 1D inspection)
 
 ---
 >>>>>>> 3c82a7d (chnaged the readme.md and other files)

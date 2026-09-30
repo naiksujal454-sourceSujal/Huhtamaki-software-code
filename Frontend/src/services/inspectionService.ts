@@ -18,6 +18,7 @@ export interface LiveCounters {
   nok_count: number;
   pass_rate: number;
   current_ppm: number;
+  current_mpm?: number;
   session_id?: string;
 }
 

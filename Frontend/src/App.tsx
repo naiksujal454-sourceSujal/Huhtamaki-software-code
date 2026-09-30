@@ -62,6 +62,7 @@ function App() {
     nok_count: 0,
     pass_rate: 100.0,
     current_ppm: 0,
+    current_mpm: 0,
   });
   const [lastEvent, setLastEvent] = useState<InspectionEvent | null>(null);
   const [alarmDetails, setAlarmDetails] = useState<AlarmDetails | null>(null);
@@ -374,6 +375,7 @@ function App() {
           passRate={counters.pass_rate}
           inspectionTimeMs={lastEvent ? lastEvent.latency_ms : '0'}
           speedPpm={counters.current_ppm}
+          speedMpm={counters.current_mpm ?? 220}
           lastStatus={lastStatusText}
           alertCount={counters.nok_count}
           hasActiveAlarm={alarmDetails !== null}

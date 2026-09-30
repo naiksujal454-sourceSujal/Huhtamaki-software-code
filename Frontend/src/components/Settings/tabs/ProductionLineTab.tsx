@@ -19,7 +19,7 @@ const ProductionLineTab: React.FC = () => {
   const [lineName, setLineName] = useState('Line 04 - Flexo Cup Forming & Printing');
   const [stationId, setStationId] = useState('STATION-01');
   const [plantLocation, setPlantLocation] = useState('Huhtamaki Foodservice India - Plant 1');
-  const [targetPpm, setTargetPpm] = useState('500');
+  const [targetPpm, setTargetPpm] = useState('220');
   const [pitchSpacing, setPitchSpacing] = useState('120');
   const [triggerMode, setTriggerMode] = useState('Gap Sensor (DI-0)');
   const [debounceMs, setDebounceMs] = useState('12');
@@ -176,7 +176,7 @@ const ProductionLineTab: React.FC = () => {
           </h3>
           <div className="grid grid-cols-4 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Target Speed (PPM)</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Target Line Speed (MPM)</label>
               <input
                 type="number"
                 value={targetPpm}
@@ -185,7 +185,7 @@ const ProductionLineTab: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Container Pitch (mm)</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Label Sheet Pitch (mm)</label>
               <input
                 type="number"
                 value={pitchSpacing}

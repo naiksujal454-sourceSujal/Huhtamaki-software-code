@@ -12,6 +12,7 @@ from app.api.recipes import router as recipes_router
 from app.api.settings import router as settings_router
 from app.api.system import router as system_router
 from app.api.users import router as users_router
+from app.api.datalogic import router as datalogic_router
 from app.config import get_settings
 from app.db.database import SessionLocal, engine, init_database
 from app.services.audit_service import log_recent_audits
@@ -71,6 +72,7 @@ app.include_router(recipes_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(system_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
+app.include_router(datalogic_router, prefix="/api")
 
 
 @app.websocket("/api/ws/live")

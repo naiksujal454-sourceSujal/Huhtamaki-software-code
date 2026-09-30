@@ -16,6 +16,7 @@ interface HeaderProps {
   passRate: number;
   inspectionTimeMs: number | string;
   speedPpm: number;
+  speedMpm?: number;
   lastStatus: 'OK' | 'NOT OK' | 'IDLE' | 'PAUSED';
   alertCount?: number;
   hasActiveAlarm?: boolean;
@@ -33,6 +34,7 @@ const Header: React.FC<HeaderProps> = ({
   passRate,
   inspectionTimeMs,
   speedPpm,
+  speedMpm,
   lastStatus,
   alertCount = 0,
   hasActiveAlarm = false,
@@ -66,8 +68,8 @@ const Header: React.FC<HeaderProps> = ({
           value={state === 'RUNNING' || state === 'PAUSED' ? String(inspectionTimeMs) : "0"}
         />
         <StatusWidget
-          label="SPEED (PPM)"
-          value={state === 'RUNNING' ? String(speedPpm) : (state === 'PAUSED' ? String(speedPpm) : "0")}
+          label="SPEED (MPM)"
+          value={state === 'RUNNING' ? String(speedMpm ?? 220) : (state === 'PAUSED' ? String(speedMpm ?? 220) : "0")}
         />
         <StatusWidget
           label="STATUS"
