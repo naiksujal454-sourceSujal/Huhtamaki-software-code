@@ -153,57 +153,16 @@ def _as_date(value: datetime | None) -> date:
 
 
 def _get_batch_history(db: Session) -> list[BatchHistoryItem]:
-    current_code = processing_manager.session_id or f"BATCH-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-
-    # 1. Ensure current active batch is recorded in DB
-    active_b = db.scalar(select(ProductionBatch).where(ProductionBatch.batch_code == current_code))
-    if not active_b:
-        active_b = ProductionBatch(
-            batch_code=current_code,
-            status=processing_manager.batch_status.lower(),
-            opened_at=processing_manager.batch_opened_at or datetime.now(timezone.utc),
-        )
-        db.add(active_b)
-        try:
-            db.commit()
-        except Exception:
-            db.rollback()
-
-    all_batches = list(db.scalars(select(ProductionBatch).order_by(ProductionBatch.opened_at.desc())).all())
-    known_codes = {b.batch_code for b in all_batches}
-
-    # 2. Discover any past batch codes from stored inspections
-    past_codes = db.scalars(
-        select(Inspection.batch_code)
-        .where(Inspection.batch_code.is_not(None), Inspection.batch_code != "")
-        .distinct()
-    ).all()
-    for pc in past_codes:
-        if pc and pc not in known_codes:
-            earliest_insp = db.scalar(
-                select(Inspection.created_at)
-                .where(Inspection.batch_code == pc)
-                .order_by(Inspection.created_at.asc())
-                .limit(1)
-            )
-            nb = ProductionBatch(
-                batch_code=pc,
-                status="closed",
-                opened_at=earliest_insp or datetime.now(timezone.utc),
-            )
-            db.add(nb)
-            try:
-                db.commit()
-                all_batches.append(nb)
-                known_codes.add(pc)
-            except Exception:
-                db.rollback()
-
-    all_batches.sort(key=lambda x: x.opened_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    # Strictly read-only: never create batches or commit to DB on a GET request.
+    all_batches = list(
+        db.scalars(
+            select(ProductionBatch).order_by(ProductionBatch.opened_at.desc()).limit(10)
+        ).all()
+    )
 
     items: list[BatchHistoryItem] = []
     for b in all_batches:
-        st = processing_manager.batch_status.lower() if b.batch_code == processing_manager.session_id else b.status.lower()
+        st = processing_manager.batch_status.lower() if (processing_manager.session_id and b.batch_code == processing_manager.session_id) else b.status.lower()
         p_cnt = db.scalar(
             select(func.count(Inspection.id)).where(Inspection.batch_code == b.batch_code, Inspection.status == "OK")
         ) or 0
@@ -225,4 +184,5 @@ def _get_batch_history(db: Session) -> list[BatchHistoryItem]:
         )
     # Return 4 to 5 most recent batches as requested
     return items[:5]
+
 

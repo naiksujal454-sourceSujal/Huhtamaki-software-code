@@ -129,9 +129,10 @@ class ProcessingManager:
         self.state: str = "IDLE"  # IDLE, RUNNING, PAUSED, STOPPED
         self.mode: str = "simulation"  # simulation, hardware
         self.active_recipe: Optional[Dict[str, Any]] = None
-        self.session_id: Optional[str] = f"BATCH-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-        self.batch_opened_at: Optional[datetime] = datetime.now(timezone.utc)
-        self.batch_status: str = "OPEN"
+        self.session_id: Optional[str] = None
+        self.batch_opened_at: Optional[datetime] = None
+        self.batch_status: str = "CLOSED"
+        self._load_active_batch_from_db()
         self._oldest_queue_item_time: Optional[float] = None
 
         # Live Metrics & Counters
@@ -166,6 +167,31 @@ class ProcessingManager:
         self._db_worker_task: Optional[asyncio.Task] = None
         self.simulate_defects: bool = False
         self.stop_on_defect: bool = True
+
+    def _load_active_batch_from_db(self):
+        """Loads the current open batch from PostgreSQL without creating any new batch."""
+        try:
+            from app.db.database import SessionLocal
+            from app.models.batch import ProductionBatch
+            from sqlalchemy import select
+            with SessionLocal() as db:
+                open_b = db.scalar(
+                    select(ProductionBatch)
+                    .where(ProductionBatch.status == "open")
+                    .order_by(ProductionBatch.opened_at.desc())
+                    .limit(1)
+                )
+                if open_b:
+                    self.session_id = open_b.batch_code
+                    self.batch_status = "OPEN"
+                    self.batch_opened_at = open_b.opened_at
+                    logger.info(f"Loaded existing open batch from database: [{self.session_id}]")
+                else:
+                    self.session_id = None
+                    self.batch_status = "CLOSED"
+                    self.batch_opened_at = None
+        except Exception as e:
+            logger.warning(f"Could not load active batch from database: {e}")
 
     def _ensure_db_worker(self):
         if self._db_worker_task is None or self._db_worker_task.done():
@@ -284,7 +310,9 @@ class ProcessingManager:
             self.pass_rate = 100.0
             self.current_ppm = 0
             self.recent_events.clear()
-            self.session_id = f"BATCH-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+            # Preserve user-opened batch. Only load from DB if not yet set.
+            if not self.session_id:
+                self._load_active_batch_from_db()
             self.start_time = time.time()
 
         self.state = "RUNNING"

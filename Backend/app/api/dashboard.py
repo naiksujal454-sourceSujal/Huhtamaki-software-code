@@ -1,5 +1,5 @@
 from datetime import date, datetime, timezone
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
@@ -33,7 +33,9 @@ def open_production_batch(
 	current_u: User | None = Depends(optional_user),
 	db: Session = Depends(get_db),
 ) -> ProductionBatchInfo:
-	clean_code = payload.batch_code.strip() if payload.batch_code else f"BATCH-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+	if not payload.batch_code or not payload.batch_code.strip():
+		raise HTTPException(status_code=400, detail="Batch code cannot be empty")
+	clean_code = payload.batch_code.strip()
 	now_utc = datetime.now(timezone.utc)
 
 	# 1. Close any currently open batch
