@@ -32,7 +32,10 @@ import {
   triggerDatalogicScan,
   selectDatalogicJob,
   fetchUsbDevices,
-  triggerStrobePulse
+  triggerStrobePulse,
+  getPlcStatus,
+  pingPlc,
+  configurePlc
 } from '../../services/api';
 
 type ConnectionTab = 'scanner' | 'lights' | 'ethernet' | 'usb' | 'plc' | 'bypass';
@@ -53,7 +56,12 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
     }
   }, [initialTab]);
 
-  // PLC Tab State - live from backend
+  // PLC Tab State - live from dedicated /api/plc endpoints
+  const [plcIp, setPlcIp] = useState('192.168.125.1');
+  const [plcPort, setPlcPort] = useState(502);
+  const [plcUnitId, setPlcUnitId] = useState(1);
+  const [plcLatency, setPlcLatency] = useState<number | null>(null);
+  const [isPingingPlc, setIsPingingPlc] = useState(false);
   const [plcConnected, setPlcConnected] = useState(false);
   const [plcMessage, setPlcMessage] = useState('Checking Modbus TCP status...');
   const [plcState, setPlcState] = useState<'idle' | 'running' | 'stopped'>('idle');
@@ -105,16 +113,35 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
   const handleRefreshConnection = async () => {
     setIsRefreshingPlc(true);
     try {
-      const res = await runComponentTest('plc');
-      const isOk = res.components?.plc?.healthy === true;
+      const data = await getPlcStatus(plcIp, Number(plcPort));
+      const isOk = data.connection?.connected === true;
       setPlcConnected(isOk);
-      setPlcMessage(res.components?.plc?.message || (isOk ? 'Modbus TCP connected to 192.168.125.1:502' : 'Modbus TCP socket offline (192.168.125.1:502)'));
+      setPlcLatency(data.connection?.latency_ms ?? null);
+      setPlcMessage(data.connection?.message || (isOk ? `Modbus TCP connected to ${plcIp}:${plcPort}` : `Modbus TCP socket offline (${plcIp}:${plcPort})`));
       setPlcHeartbeatTime(formatCurrentTime());
+      if (data.ip) setPlcIp(data.ip);
+      if (data.port) setPlcPort(data.port);
+      if (data.unit_id) setPlcUnitId(data.unit_id);
     } catch {
       setPlcConnected(false);
-      setPlcMessage('Modbus TCP socket did not connect (192.168.125.1:502)');
+      setPlcMessage(`Modbus TCP socket offline (${plcIp}:${plcPort})`);
     } finally {
       setIsRefreshingPlc(false);
+    }
+  };
+
+  const handlePingPlc = async () => {
+    setIsPingingPlc(true);
+    try {
+      const res = await pingPlc(plcIp, Number(plcPort));
+      setPlcConnected(res.connected === true);
+      setPlcLatency(res.latency_ms ?? null);
+      setPlcMessage(res.message);
+    } catch (e: any) {
+      setPlcConnected(false);
+      setPlcMessage(`Ping failed: ${e.message || e}`);
+    } finally {
+      setIsPingingPlc(false);
     }
   };
 
@@ -362,23 +389,69 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
           {activeTab === 'plc' && (
             <div className="max-w-4xl flex flex-col gap-6 animate-in fade-in duration-100">
 
-              {/* Disconnected / Connected Status Badge */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center">
-                  {plcConnected ? (
-                    <div className="border border-emerald-300 bg-emerald-50 text-emerald-700 font-bold px-4 py-1.5 rounded-lg text-sm inline-flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>Connected</span>
+              {/* Modbus TCP Socket Connection & Diagnostics Card */}
+              <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3.5 h-3.5 rounded-full ${plcConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-800">
+                        {plcConnected ? 'Modbus TCP Socket Connected' : 'Modbus TCP Socket Offline'}
+                      </span>
+                      {plcLatency !== null && (
+                        <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
+                          {plcLatency} ms
+                        </span>
+                      )}
                     </div>
-                  ) : (
-                    <div className="border border-red-300 bg-red-50 text-red-600 font-bold px-4 py-1.5 rounded-lg text-sm inline-block">
-                      Disconnected
-                    </div>
-                  )}
+                    <p className={`text-[11px] mt-0.5 font-medium ${plcConnected ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {plcMessage}
+                    </p>
+                  </div>
                 </div>
 
-                <div className={`text-xs font-semibold ${plcConnected ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {plcMessage}
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-300 rounded px-2.5 py-1 text-xs">
+                    <span className="text-gray-400 font-semibold">IP:</span>
+                    <input
+                      type="text"
+                      value={plcIp}
+                      onChange={(e) => setPlcIp(e.target.value)}
+                      className="w-28 font-mono font-bold text-gray-800 bg-transparent outline-hidden"
+                      placeholder="192.168.125.1"
+                    />
+                    <span className="text-gray-400 font-semibold">:</span>
+                    <input
+                      type="number"
+                      value={plcPort}
+                      onChange={(e) => setPlcPort(Number(e.target.value))}
+                      className="w-14 font-mono font-bold text-gray-800 bg-transparent outline-hidden"
+                      placeholder="502"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handlePingPlc}
+                    disabled={isPingingPlc}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 active:scale-95 text-xs font-bold px-3 py-1.5 rounded transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <RefreshCw size={12} className={isPingingPlc ? 'animate-spin' : ''} />
+                    <span>Ping</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await configurePlc({ ip: plcIp, port: Number(plcPort), unit_id: Number(plcUnitId) });
+                        await handleRefreshConnection();
+                      } catch (e: any) {
+                        alert(`Failed to save PLC config: ${e.message || e}`);
+                      }
+                    }}
+                    className="bg-[#123681] hover:bg-blue-900 active:scale-95 text-white text-xs font-bold px-3 py-1.5 rounded transition-all cursor-pointer"
+                  >
+                    Save Config
+                  </button>
                 </div>
               </div>
 

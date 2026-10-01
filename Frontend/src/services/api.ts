@@ -719,4 +719,55 @@ export async function selectDatalogicJob(jobId: number, ip?: string, port?: numb
   return await res.json();
 }
 
+// ==========================================
+// Industrial PLC Modbus TCP APIs
+// ==========================================
+
+export interface PlcConfigPayload {
+  ip?: string;
+  port?: number;
+  unit_id?: number;
+  timeout_ms?: number;
+  digital_inputs?: Record<string, any>;
+  digital_outputs?: Record<string, any>;
+}
+
+export async function getPlcStatus(ip?: string, port?: number) {
+  const query = ip ? `?ip=${encodeURIComponent(ip)}${port ? `&port=${port}` : ''}` : '';
+  const res = await authFetch(`${API_BASE}/plc/status${query}`);
+  if (!res.ok) throw new Error('Failed to fetch PLC status');
+  return await res.json();
+}
+
+export async function pingPlc(ip?: string, port?: number) {
+  const res = await authFetch(`${API_BASE}/plc/ping`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ip, port }),
+  });
+  if (!res.ok) throw new Error('Failed to ping PLC');
+  return await res.json();
+}
+
+export async function configurePlc(payload: PlcConfigPayload) {
+  const res = await authFetch(`${API_BASE}/plc/configure`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error('Failed to configure PLC');
+  return await res.json();
+}
+
+export async function writePlcCoil(coilAddress: number, state: boolean, ip?: string, port?: number) {
+  const res = await authFetch(`${API_BASE}/plc/write-coil`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ coil_address: coilAddress, state, ip, port }),
+  });
+  if (!res.ok) throw new Error('Failed to write PLC coil');
+  return await res.json();
+}
+
+
 

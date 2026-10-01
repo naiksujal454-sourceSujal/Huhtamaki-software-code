@@ -358,7 +358,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
         <section className="mb-6 border border-gray-200 rounded-md overflow-hidden bg-white shadow-xs">
           <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50">
             <h3 className="text-sm font-bold text-gray-800">{t('Batch History')}</h3>
-            <span className="text-xs text-gray-500 font-mono">{batchHistory.length} batches tracked</span>
+            <span className="text-xs text-gray-500 font-mono">Last 5 recent production batches</span>
           </div>
           <table className="w-full text-xs text-left">
             <thead className="bg-gray-100/70 text-gray-600 font-bold border-b border-gray-200">
@@ -378,7 +378,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
                   </td>
                 </tr>
               ) : (
-                batchHistory.map((b, idx) => {
+                batchHistory.slice(0, 5).map((b, idx) => {
                   const isOpen = b.status.toLowerCase() === 'open';
                   return (
                     <tr key={idx} className={`border-b border-gray-100 last:border-none ${isOpen ? 'bg-blue-50/30' : 'hover:bg-gray-50/50'}`}>

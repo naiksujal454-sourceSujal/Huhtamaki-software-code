@@ -223,5 +223,6 @@ def _get_batch_history(db: Session) -> list[BatchHistoryItem]:
                 opened_formatted=opened_str,
             )
         )
-    return items
+    # Return 4 to 5 most recent batches as requested
+    return items[:5]
 
