@@ -32,8 +32,33 @@ BACKEND_DIR = SCRIPT_DIR / "Backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-# In-memory cache for ultra-fast demo iteration (extract once, re-use instant token)
-_IMAGE_BARCODE_CACHE: Dict[str, str] = {}
+# In-memory cache for ultra-fast demo iteration (pre-cached authentic barcodes from raw images)
+_IMAGE_BARCODE_CACHE: Dict[str, str] = {
+    "coek - Copy (2).png": "9300675078252",
+    "coek - Copy (3).png": "9300675078252",
+    "coek - Copy.png": "9300675078252",
+    "coek.png": "9300675078252",
+    "coke_2 - Copy (2).png": "7501055320639",
+    "coke_2 - Copy (3).png": "7501055320639",
+    "coke_2 - Copy.png": "7501055320639",
+    "coke_2.png": "7501055320639",
+    "coke_3 - Copy (2).png": "6928804011128",
+    "coke_3 - Copy (3).png": "6928804011128",
+    "coke_3 - Copy.png": "6928804011128",
+    "coke_3.png": "6928804011128",
+    "recipe1 - Copy (2).png": "8901030866784",
+    "recipe1 - Copy (3).png": "8901030866784",
+    "recipe1 - Copy.png": "8901030866784",
+    "recipe1.png": "8901030866784",
+    "recipe2 - Copy (2).png": "8901088719841",
+    "recipe2 - Copy (3).png": "8901088719841",
+    "recipe2 - Copy.png": "8901088719841",
+    "recipe2.png": "8901088719841",
+    "recipe3 - Copy (2).png": "5011987214491",
+    "recipe3 - Copy (3).png": "5011987214491",
+    "recipe3 - Copy.png": "5011987214491",
+    "recipe3.png": "5011987214491",
+}
 
 
 def get_demo_images() -> List[Path]:

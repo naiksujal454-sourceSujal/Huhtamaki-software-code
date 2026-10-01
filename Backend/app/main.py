@@ -1,3 +1,11 @@
+import sys
+if sys.platform == "win32":
+    import ctypes
+    try:
+        ctypes.windll.winmm.timeBeginPeriod(1)
+    except Exception:
+        pass
+
 from contextlib import asynccontextmanager
 import logging
 
