@@ -399,7 +399,7 @@ class ProcessingManager:
             if self.state not in ["RUNNING"]:
                 break
 
-            loop_start = time.time()
+            loop_start = time.perf_counter()
 
             try:
                 # 1. Acquire Image and Barcode (Simulation or Hardware)
@@ -421,13 +421,10 @@ class ProcessingManager:
                     confidence = eval_result["confidence"]
                     inspected_at = eval_result["inspected_at"]
 
-                # 220 MPM Label Sheet High-Speed Inspection:
-                # At 220 MPM (3.667 m/s) with 100mm label pitch, total cycle window = 27.27ms.
-                # Data Matrix 220 optical hardware extraction takes ~5ms.
-                # Software inspection & comparison takes 10ms - 15ms.
-                measured_ms = (time.time() - loop_start) * 1000
-                jitter = ((loop_counter * 17 + 3) % 46) / 10.0  # 0.0 to 4.5ms realistic micro-jitter
-                processing_time_ms = round(10.2 + jitter, 2)
+                # 100% Authentic Hardware Monotonic Latency:
+                # Measured directly using high-precision OS clock (time.perf_counter)
+                measured_ms = (time.perf_counter() - loop_start) * 1000
+                processing_time_ms = round(measured_ms, 2)
 
                 # 3. Update Metrics
                 self.total_inspected += 1
@@ -516,7 +513,7 @@ class ProcessingManager:
                 logger.error(f"Error in inspection cycle: {e}", exc_info=True)
 
             # 220 MPM continuous web cycle pitch: 100mm distance / 3.667 m/s = 27.27ms total cycle
-            elapsed_cycle = time.time() - loop_start
+            elapsed_cycle = time.perf_counter() - loop_start
             sleep_delay = max(0.005, 0.02727 - elapsed_cycle)
             await asyncio.sleep(sleep_delay)
 

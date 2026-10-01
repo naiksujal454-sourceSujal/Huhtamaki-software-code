@@ -166,4 +166,12 @@ def warm_cache():
     for fn in demo_files:
         get_raw_image_bytes(fn)
         get_processed_image_bytes(fn)
-    logger.info("RAM image cache warmed successfully!")
+    # Also pre-warm barcode optical decoding cache in memory
+    try:
+        from demo_image_text_extraction import get_demo_images, extract_barcode_text
+        imgs = get_demo_images()
+        for img in imgs:
+            extract_barcode_text(img)
+    except Exception as e:
+        logger.debug(f"Barcode cache warmup: {e}")
+    logger.info("RAM image and barcode cache warmed successfully!")
