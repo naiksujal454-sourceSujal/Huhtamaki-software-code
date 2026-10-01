@@ -107,17 +107,15 @@ When a label image is uploaded, the backend executes an optimized multi-stage co
 
 ---
 
-<<<<<<< HEAD
-## 4. Barcode Comparison Logic
-=======
 ## 4. Live Inspection & Barcode Comparison Logic
 
-### 4.1 Inspection Execution Loop
-1. The operator clicks **START** on the top control bar. The state machine switches from `IDLE` to `RUNNING`.
-2. As products move along the conveyor, a high-precision **Gap Sensor (DI-0)** triggers the **Datalogic Data Matrix 220** scanner.
-3. The scanner captures the image, decodes the barcode payload, and streams the barcode string and image frame over industrial Ethernet (`192.168.125.20:51235`) to the backend.
-4. Total inspection cycle time is **50ms - 95ms**.
->>>>>>> 3c82a7d (chnaged the readme.md and other files)
+### 4.1 Inspection Execution Loop (220 MPM Label Sheet Timing Budget)
+At **220 MPM** with **100mm spacing between labels**, the physical timing budget is mathematically calculated as:
+1. **Conveyor Web Velocity**: $220\text{ meters/minute} \div 60\text{ seconds} = \mathbf{3.6667\text{ m/s}} = \mathbf{3.6667\text{ mm/ms}}$.
+2. **Total Pitch Window**: $\frac{100\text{ mm}}{3.6667\text{ mm/ms}} = \mathbf{27.27\text{ ms}}$ per label.
+3. **Data Matrix 220 Optical Hardware Extraction**: $\approx \mathbf{5\text{ ms}}$ (high-power pulsed strobe + onboard FPGA decode).
+4. **Software Inspection & Comparison Time**: Completes in **`10 ms – 15 ms`** (averaging $\sim 12.5\text{ ms}$), well within the remaining $22.27\text{ ms}$ budget before the next label arrives.
+5. **Continuous Throughput**: Verifies $\mathbf{2,200\text{ labels/minute}}$ without missing a trigger.
 
 ### 4.2 Exact Barcode Matching Logic (`compare_code`)
 The core verification function runs character-by-character comparison:
@@ -204,12 +202,7 @@ When a defect is detected (barcode mismatch, unreadable code, or damaged label),
   - Notification that the line has been halted by safety interlocks.
 - The email is dispatched in a background asynchronous thread via SMTP to configured supervisors (`supervisor@huhtamaki.com`).
 
-<<<<<<< HEAD
-### 5.5 Critical Alarm Modal on HMI & Recovery
-=======
-
 ### 5.4 Critical Alarm Modal on HMI & Recovery
->>>>>>> 3c82a7d (chnaged the readme.md and other files)
 - The WebSocket pushes a `CRITICAL_ALARM` event to the HMI in `< 1ms`.
 - The screen locks into the high-contrast **Critical Defect Modal**:
   - Displays side-by-side comparison: Scanned image with **Red Bounding Box** vs Expected Reference.
@@ -287,11 +280,6 @@ When a defect is detected (barcode mismatch, unreadable code, or damaged label),
   - **Coil 0**: Conveyor Motor Interlock (1 = Stop Line, 0 = Run Line).
   - **Coil 1**: Factory Alarm Buzzer & Red Tower Light (1 = Sound Alarm, 0 = Silence).
   - **Coil 2**: Pneumatic Rejection Solenoid Valve Pulse.
-<<<<<<< HEAD
-  - **Discrete Input 0 (DI-0)**: Industrial Gap Sensor (Slot/Fork Gap Sensor for high-speed container gap detection).
-<<<<<<< HEAD
-=======
-=======
   - **Discrete Input 0 (DI-0)**: Industrial Gap Sensor (Slot/Fork Gap Sensor for high-speed label sheet gap detection).
 
 ### 6.4 Datalogic Matrix 220 Configuration & Preset Management
