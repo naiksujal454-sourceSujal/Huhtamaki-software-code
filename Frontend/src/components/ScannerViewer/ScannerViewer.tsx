@@ -19,6 +19,7 @@ interface ScannerViewerProps {
   stopOnDefect?: boolean;
   onToggleStopOnDefect?: (stop: boolean) => void;
   onInjectDefect?: () => void;
+  onOpenScannerConfig?: () => void;
 }
 
 const ScannerViewer: React.FC<ScannerViewerProps> = ({
@@ -38,6 +39,7 @@ const ScannerViewer: React.FC<ScannerViewerProps> = ({
   stopOnDefect = true,
   onToggleStopOnDefect,
   onInjectDefect,
+  onOpenScannerConfig,
 }) => {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [showProcessed, setShowProcessed] = useState(true);
@@ -78,6 +80,18 @@ const ScannerViewer: React.FC<ScannerViewerProps> = ({
             <FolderOpen size={16} className="text-pixtron-blue" />
             <span>Preset: <strong className="text-[#123681]">{activeRecipeName}</strong></span>
           </button>
+
+          {/* Quick Matrix 220 Optical Setup Button */}
+          {onOpenScannerConfig && (
+            <button
+              onClick={onOpenScannerConfig}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-[#123681] bg-blue-50 hover:bg-blue-100 rounded transition-colors cursor-pointer border border-blue-200 shadow-2xs"
+              title="Open Datalogic Matrix 220 Hardware & Optical Configuration"
+            >
+              <Scan size={14} className="text-[#123681]" />
+              <span>Matrix 220 Setup</span>
+            </button>
+          )}
 
           {/* Quick Defect Injection Button */}
           {onInjectDefect && (

@@ -639,3 +639,64 @@ export async function runPing(target: string = '8.8.8.8'): Promise<{ target: str
   return await res.json();
 }
 
+// ==========================================
+// Datalogic Matrix 220 Hardware APIs
+// ==========================================
+
+export interface DatalogicConfigPayload {
+  exposure_us?: number;
+  gain?: number;
+  focus_distance_mm?: number;
+  internal_illuminator?: string;
+  trigger_mode?: string;
+  job_id?: number;
+  rated_speed_mpm?: number;
+  ip?: string;
+  port?: number;
+}
+
+export async function getDatalogicStatus(ip?: string, port?: number) {
+  const query = ip ? `?ip=${encodeURIComponent(ip)}${port ? `&port=${port}` : ''}` : '';
+  const res = await authFetch(`${API_BASE}/datalogic/status${query}`);
+  if (!res.ok) throw new Error('Failed to fetch Datalogic status');
+  return await res.json();
+}
+
+export async function pingDatalogic(ip?: string, port?: number) {
+  const query = ip ? `?ip=${encodeURIComponent(ip)}${port ? `&port=${port}` : ''}` : '';
+  const res = await authFetch(`${API_BASE}/datalogic/ping${query}`);
+  if (!res.ok) throw new Error('Failed to ping Datalogic Matrix 220');
+  return await res.json();
+}
+
+export async function configureDatalogic(payload: DatalogicConfigPayload) {
+  const res = await authFetch(`${API_BASE}/datalogic/configure`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error('Failed to configure Datalogic Matrix 220');
+  return await res.json();
+}
+
+export async function triggerDatalogicScan(ip?: string, port?: number) {
+  const res = await authFetch(`${API_BASE}/datalogic/trigger-scan`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ip, port }),
+  });
+  if (!res.ok) throw new Error('Failed to trigger scan on Datalogic Matrix 220');
+  return await res.json();
+}
+
+export async function selectDatalogicJob(jobId: number, ip?: string, port?: number) {
+  const res = await authFetch(`${API_BASE}/datalogic/select-job`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ job_id: jobId, ip, port }),
+  });
+  if (!res.ok) throw new Error('Failed to switch Datalogic job');
+  return await res.json();
+}
+
+

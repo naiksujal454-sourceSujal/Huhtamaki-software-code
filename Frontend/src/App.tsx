@@ -68,6 +68,7 @@ function App() {
   const [alarmDetails, setAlarmDetails] = useState<AlarmDetails | null>(null);
   const [recentEvents, setRecentEvents] = useState<InspectionEvent[]>([]);
   const [settingsInitialTab, setSettingsInitialTab] = useState<string>('General Settings');
+  const [connectionsInitialTab, setConnectionsInitialTab] = useState<'scanner' | 'lights' | 'ethernet' | 'usb' | 'plc' | 'bypass'>('scanner');
 
   // Check active session on startup
   useEffect(() => {
@@ -322,6 +323,7 @@ function App() {
   const handleRightArrowClick = () => {
     if (isRightDisabled) return;
     auditLogger.logNavigation('connections', 'Navigated to Hardware, Scanner & PLC Configs (via right button)');
+    setConnectionsInitialTab('scanner');
     setCurrentView('connections');
   };
 
@@ -401,6 +403,11 @@ function App() {
                   stopOnDefect={stopOnDefect}
                   onToggleStopOnDefect={handleToggleStopOnDefect}
                   onInjectDefect={handleInjectDefect}
+                  onOpenScannerConfig={() => {
+                    auditLogger.logNavigation('connections', 'Opened Datalogic Matrix 220 Hardware Config');
+                    setConnectionsInitialTab('scanner');
+                    setCurrentView('connections');
+                  }}
                   onOpenPreset={() => {
                     auditLogger.logAction('Preset', 'preset.open_dialog', 'Opened preset selection dialog');
                     setIsPresetModalOpen(true);
@@ -429,6 +436,7 @@ function App() {
 
           {currentView === 'connections' && (
             <ConnectionsView
+              initialTab={connectionsInitialTab}
               onNavigate={handleNavigate}
               onOpenPreset={() => {
                 auditLogger.logAction('Preset', 'preset.open_dialog', 'Opened preset selection dialog');

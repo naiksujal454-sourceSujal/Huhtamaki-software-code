@@ -23,18 +23,33 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { testBuzzerPulse, getInspectionStatus } from '../../services/inspectionService.ts';
-import { runComponentTest, fetchNetworkInterfaces } from '../../services/api';
+import { 
+  runComponentTest, 
+  fetchNetworkInterfaces,
+  getDatalogicStatus,
+  pingDatalogic,
+  configureDatalogic,
+  triggerDatalogicScan,
+  selectDatalogicJob
+} from '../../services/api';
 
 type ConnectionTab = 'scanner' | 'lights' | 'ethernet' | 'usb' | 'plc' | 'bypass';
 
 interface ConnectionsViewProps {
   onNavigate?: (view: 'inspection' | 'analytics' | 'settings' | 'connections') => void;
   onOpenPreset?: () => void;
+  initialTab?: ConnectionTab;
 }
 
-const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPreset }) => {
+const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPreset, initialTab = 'scanner' }) => {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<ConnectionTab>('plc');
+  const [activeTab, setActiveTab] = useState<ConnectionTab>(initialTab);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // PLC Tab State - live from backend
   const [plcConnected, setPlcConnected] = useState(false);
@@ -53,10 +68,19 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
   // Bypass Rejection Tab State
   const [bypassRejection, setBypassRejection] = useState(false);
 
-  // Scanner Tab State
-  const [exposureTime, setExposureTime] = useState(2500);
-  const [analogGain, setAnalogGain] = useState(6);
-  const [triggerMode, setTriggerMode] = useState('Hardware Gap Sensor Trigger');
+  // Datalogic Matrix 220 Optical Profile & Calibration State
+  const [matrixIp, setMatrixIp] = useState('192.168.125.20');
+  const [matrixPort, setMatrixPort] = useState(51235);
+  const [exposureUs, setExposureUs] = useState(120);
+  const [liquidLensFocusMm, setLiquidLensFocusMm] = useState(150);
+  const [matrixGain, setMatrixGain] = useState(4);
+  const [matrixJobId, setMatrixJobId] = useState(1);
+  const [triggerSource, setTriggerSource] = useState('GAP_SENSOR_DI0');
+  const [matrixLatency, setMatrixLatency] = useState<number | null>(null);
+  const [isPingingMatrix, setIsPingingMatrix] = useState(false);
+  const [isApplyingMatrix, setIsApplyingMatrix] = useState(false);
+  const [isTriggeringScan, setIsTriggeringScan] = useState(false);
+  const [lastScannedBarcode, setLastScannedBarcode] = useState<string | null>(null);
   const [scannerFeedback, setScannerFeedback] = useState<string | null>(null);
 
   // Lights Tab State
@@ -134,6 +158,28 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
         }
       })
       .catch(() => {});
+
+    // Live Datalogic Matrix 220 Optical Profile Initialization
+    getDatalogicStatus()
+      .then((data) => {
+        if (data) {
+          if (data.ip) setMatrixIp(data.ip);
+          if (data.port) setMatrixPort(data.port);
+          if (data.active_config) {
+            if (data.active_config.exposure_us) setExposureUs(data.active_config.exposure_us);
+            if (data.active_config.focus_distance_mm) setLiquidLensFocusMm(data.active_config.focus_distance_mm);
+            if (data.active_config.gain) setMatrixGain(data.active_config.gain);
+            if (data.active_config.job_id) setMatrixJobId(data.active_config.job_id);
+            if (data.active_config.trigger_mode) setTriggerSource(data.active_config.trigger_mode);
+          }
+          if (data.connection) {
+            setScannerOnline(data.connection.connected === true);
+            setScannerMessage(data.connection.message || 'Matrix 220 controller connected');
+            if (data.connection.latency_ms !== undefined) setMatrixLatency(data.connection.latency_ms);
+          }
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleStartPlc = async () => {
@@ -148,6 +194,77 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
   const handleHeartbeat = async () => {
     setPlcHeartbeatTime(formatCurrentTime());
     await handleRefreshConnection();
+  };
+
+  // Matrix 220 Optical Actions
+  const handlePingMatrix = async () => {
+    setIsPingingMatrix(true);
+    try {
+      const res = await pingDatalogic(matrixIp, Number(matrixPort) || 51235);
+      setScannerOnline(res.connected === true);
+      setMatrixLatency(res.latency_ms);
+      setScannerMessage(res.message);
+      setScannerFeedback(`Matrix 220 (${matrixIp}:${matrixPort}) -> ${res.connected ? 'ONLINE' : 'OFFLINE'} (${res.latency_ms} ms)`);
+      setTimeout(() => setScannerFeedback(null), 4000);
+    } catch (err: any) {
+      setScannerOnline(false);
+      setScannerFeedback(`Ping error: ${err.message || err}`);
+      setTimeout(() => setScannerFeedback(null), 4000);
+    } finally {
+      setIsPingingMatrix(false);
+    }
+  };
+
+  const handleApplyMatrixConfig = async () => {
+    setIsApplyingMatrix(true);
+    try {
+      const res = await configureDatalogic({
+        exposure_us: Number(exposureUs),
+        gain: Number(matrixGain),
+        focus_distance_mm: Number(liquidLensFocusMm),
+        job_id: Number(matrixJobId),
+        trigger_mode: triggerSource,
+        rated_speed_mpm: 220,
+        ip: matrixIp,
+        port: Number(matrixPort),
+      });
+      setScannerFeedback(`Matrix 220 armed: Exposure=${exposureUs}μs, Focus=${liquidLensFocusMm}mm, Job=${matrixJobId}, Trigger=${triggerSource}`);
+      setTimeout(() => setScannerFeedback(null), 5000);
+    } catch (err: any) {
+      setScannerFeedback(`Failed to update Matrix 220: ${err.message || err}`);
+      setTimeout(() => setScannerFeedback(null), 4000);
+    } finally {
+      setIsApplyingMatrix(false);
+    }
+  };
+
+  const handleTriggerTestScan = async () => {
+    setIsTriggeringScan(true);
+    try {
+      const res = await triggerDatalogicScan(matrixIp, Number(matrixPort) || 51235);
+      if (res.scanned_code) {
+        setLastScannedBarcode(res.scanned_code);
+        setScannerFeedback(`Decode Success: [${res.scanned_code}] (${res.latency_ms} ms)`);
+      } else {
+        setScannerFeedback(res.message || 'Trigger pulse dispatched.');
+      }
+      setTimeout(() => setScannerFeedback(null), 6000);
+    } catch (err: any) {
+      setScannerFeedback(`Test trigger failed: ${err.message || err}`);
+      setTimeout(() => setScannerFeedback(null), 4000);
+    } finally {
+      setIsTriggeringScan(false);
+    }
+  };
+
+  const handleResetMatrixDefaults = () => {
+    setExposureUs(120);
+    setLiquidLensFocusMm(150);
+    setMatrixGain(4);
+    setMatrixJobId(1);
+    setTriggerSource('GAP_SENSOR_DI0');
+    setScannerFeedback('Reset to 220 MPM defaults (120μs, 150mm Liquid Lens, DI-0 Gap Sensor). Click "Apply to Matrix 220" to arm.');
+    setTimeout(() => setScannerFeedback(null), 4000);
   };
 
   return (
@@ -178,8 +295,18 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
           </button>
         </div>
 
-        <div className="text-xs font-bold text-[#153472]">
-          {t('Hardware Connections & Diagnostic Control')}
+        <div className="flex items-center gap-4">
+          <div className="text-xs font-bold text-[#153472]">
+            {t('Hardware Connections & Diagnostic Control')}
+          </div>
+          {onNavigate && (
+            <button
+              onClick={() => onNavigate('inspection')}
+              className="text-xs font-bold text-white bg-[#123681] hover:bg-blue-900 px-3 py-1 rounded transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+            >
+              <span>← Back to Inspection</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -439,122 +566,292 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
             </div>
           )}
 
-          {/* ==================== 3. SCANNER TAB ==================== */}
+          {/* ==================== 3. SCANNER TAB (Datalogic Matrix 220 Optical Controller) ==================== */}
           {activeTab === 'scanner' && (
-            <div className="max-w-4xl flex flex-col gap-6 animate-in fade-in duration-100">
+            <div className="max-w-4xl flex flex-col gap-5 animate-in fade-in duration-100">
               
-              <div>
-                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                  <ScanLine size={18} className="text-[#123681]" />
-                  <span>Industrial Scanner Integration</span>
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  High-speed optical scanner hardware connection, optical parameters, and trigger synchronization.
-                </p>
-              </div>
-
-              {/* Real Scanner Status Box */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+              {/* Header Title with 220 MPM badge */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-200 pb-3">
                 <div>
-                  <span className="text-[11px] text-gray-400 font-medium block">Hardware Status</span>
-                  <span className={`text-xs font-bold flex items-center gap-1.5 mt-0.5 ${scannerOnline ? 'text-emerald-600' : 'text-red-500'}`}>
-                    {scannerOnline ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
-                    <span>{scannerOnline ? 'Connected (Online)' : 'Disconnected (Offline)'}</span>
+                  <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <ScanLine size={18} className="text-[#123681]" />
+                    <span>Datalogic Matrix 220 Controller</span>
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    High-speed 220 MPM continuous label inspection • Host Mode Programming (HMP) over TCP/IP.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="bg-blue-100 text-blue-900 text-xs font-bold px-3 py-1 rounded-full border border-blue-200 shadow-2xs">
+                    ⚡ Rated: 220 MPM (3.67 m/s)
                   </span>
-                </div>
-                <div>
-                  <span className="text-[11px] text-gray-400 font-medium block">Scanner Endpoint</span>
-                  <span className="text-xs font-mono font-bold text-gray-800 mt-0.5 block">192.168.125.20:51235</span>
-                </div>
-                <div>
-                  <span className="text-[11px] text-gray-400 font-medium block">Imager Sensor</span>
-                  <span className="text-xs font-bold text-gray-800 mt-0.5 block">Data Matrix 220 (1D/2D)</span>
-                </div>
-                <div>
-                  <span className="text-[11px] text-gray-400 font-medium block">Diagnostics</span>
-                  <span className="text-xs font-medium text-gray-700 mt-0.5 block truncate" title={scannerMessage}>
-                    {scannerMessage}
+                  <span className="bg-emerald-100 text-emerald-900 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200 shadow-2xs">
+                    Cycle: 27.27 ms
                   </span>
                 </div>
               </div>
 
-              {/* Scanner Parameters Form */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-2xl">
-                <div>
-                  <div className="flex justify-between text-xs font-bold text-gray-700 mb-1">
-                    <span>Exposure Time (μs)</span>
-                    <span className="font-mono text-[#123681]">{exposureTime} μs</span>
+              {/* Network Connection & TCP Socket Diagnostics Card */}
+              <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3.5 h-3.5 rounded-full ${scannerOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-800">
+                        {scannerOnline ? 'Hardware Online & Armed' : 'Hardware Simulation Mode (Ready)'}
+                      </span>
+                      {matrixLatency !== null && (
+                        <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
+                          {matrixLatency} ms
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      {scannerMessage}
+                    </p>
                   </div>
-                  <input
-                    type="range"
-                    min="100"
-                    max="10000"
-                    step="100"
-                    value={exposureTime}
-                    onChange={(e) => setExposureTime(Number(e.target.value))}
-                    className="w-full accent-[#123681] cursor-pointer"
-                  />
                 </div>
 
-                <div>
-                  <div className="flex justify-between text-xs font-bold text-gray-700 mb-1">
-                    <span>Analog Gain (dB)</span>
-                    <span className="font-mono text-[#123681]">{analogGain} dB</span>
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-300 rounded px-2.5 py-1 text-xs">
+                    <span className="text-gray-400 font-semibold">IP:</span>
+                    <input
+                      type="text"
+                      value={matrixIp}
+                      onChange={(e) => setMatrixIp(e.target.value)}
+                      className="w-28 font-mono font-bold text-gray-800 bg-transparent outline-hidden"
+                      placeholder="192.168.125.20"
+                    />
+                    <span className="text-gray-400 font-semibold">:</span>
+                    <input
+                      type="number"
+                      value={matrixPort}
+                      onChange={(e) => setMatrixPort(Number(e.target.value))}
+                      className="w-14 font-mono font-bold text-gray-800 bg-transparent outline-hidden"
+                      placeholder="51235"
+                    />
                   </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="24"
-                    step="1"
-                    value={analogGain}
-                    onChange={(e) => setAnalogGain(Number(e.target.value))}
-                    className="w-full accent-[#123681] cursor-pointer"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Acquisition Trigger Mode</label>
-                  <select
-                    value={triggerMode}
-                    onChange={(e) => setTriggerMode(e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-xs font-semibold text-gray-800 cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={handlePingMatrix}
+                    disabled={isPingingMatrix}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 active:scale-95 text-xs font-bold px-3 py-1.5 rounded transition-all cursor-pointer flex items-center gap-1.5"
                   >
-                    <option value="Hardware Gap Sensor Trigger">Hardware Gap Sensor Trigger (PLC DI-0 Gap Sensor)</option>
-                    <option value="Continuous Free Run">Continuous Free Run (Video Stream)</option>
-                    <option value="Software Command Trigger">Software Command Trigger (Manual / API)</option>
-                  </select>
+                    <RefreshCw size={12} className={isPingingMatrix ? 'animate-spin' : ''} />
+                    <span>Ping</span>
+                  </button>
                 </div>
               </div>
+
+              {/* 220 MPM Optical Calibration Controls (4 Grid Cards) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* 1. Exposure Time (Motion Blur Freeze) */}
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                        <span>Exposure Time (μs)</span>
+                        <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                          Motion Blur Shield
+                        </span>
+                      </span>
+                      <span className="font-mono text-sm font-bold text-[#123681] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                        {exposureUs} μs
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 mb-3">
+                      At 220 MPM (3.67 m/s), exposure must be &le; 150μs to prevent 1D barcode blur.
+                    </p>
+                    <input
+                      type="range"
+                      min="50"
+                      max="350"
+                      step="5"
+                      value={exposureUs}
+                      onChange={(e) => setExposureUs(Number(e.target.value))}
+                      className="w-full accent-[#123681] cursor-pointer"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-gray-100">
+                    <span className="text-[10px] text-gray-400 font-bold uppercase">Quick:</span>
+                    {[80, 100, 120, 150].map((val) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setExposureUs(val)}
+                        className={`text-[11px] font-bold px-2 py-0.5 rounded border transition-colors cursor-pointer ${
+                          exposureUs === val ? 'bg-[#123681] text-white border-[#123681]' : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200'
+                        }`}
+                      >
+                        {val}μs {val === 120 ? '(Standard)' : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Electronic Liquid Lens Focus */}
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                        <span>Liquid Lens Working Distance (mm)</span>
+                        <span className="bg-cyan-100 text-cyan-800 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                          Electronic Autofocus
+                        </span>
+                      </span>
+                      <span className="font-mono text-sm font-bold text-[#123681] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                        {liquidLensFocusMm} mm
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 mb-3">
+                      Electronically adjusts liquid lens curvature without mechanical motor wear.
+                    </p>
+                    <input
+                      type="range"
+                      min="80"
+                      max="400"
+                      step="5"
+                      value={liquidLensFocusMm}
+                      onChange={(e) => setLiquidLensFocusMm(Number(e.target.value))}
+                      className="w-full accent-[#123681] cursor-pointer"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-gray-100">
+                    <span className="text-[10px] text-gray-400 font-bold uppercase">Quick:</span>
+                    {[120, 140, 150, 180].map((val) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setLiquidLensFocusMm(val)}
+                        className={`text-[11px] font-bold px-2 py-0.5 rounded border transition-colors cursor-pointer ${
+                          liquidLensFocusMm === val ? 'bg-[#123681] text-white border-[#123681]' : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200'
+                        }`}
+                      >
+                        {val}mm {val === 150 ? '(Default)' : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. Sensor Gain */}
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <span className="text-xs font-bold text-gray-800">Digital Sensor Gain</span>
+                      <span className="font-mono text-sm font-bold text-[#123681] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                        {matrixGain}x Gain
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 mb-3">
+                      Digital signal amplification to optimize barcode contrast under strobe lighting.
+                    </p>
+                    <input
+                      type="range"
+                      min="1"
+                      max="16"
+                      step="1"
+                      value={matrixGain}
+                      onChange={(e) => setMatrixGain(Number(e.target.value))}
+                      className="w-full accent-[#123681] cursor-pointer"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-gray-400 font-semibold mt-2 pt-2 border-t border-gray-100">
+                    <span>1x (Lowest Noise)</span>
+                    <span>4x (Balanced)</span>
+                    <span>16x (Max Contrast)</span>
+                  </div>
+                </div>
+
+                {/* 4. Trigger Mode & DL.CODE Job Slot */}
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs flex flex-col justify-between gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-gray-800 block mb-1">
+                      Hardware Trigger Synchronization
+                    </label>
+                    <select
+                      value={triggerSource}
+                      onChange={(e) => setTriggerSource(e.target.value)}
+                      className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-xs font-bold text-gray-800 cursor-pointer bg-white"
+                    >
+                      <option value="GAP_SENSOR_DI0">Hardware Gap Sensor (DI-0) [Label Inspection]</option>
+                      <option value="SOFTWARE_TRIGGER">Software Trigger (TCP &lt;TRIGGER&gt;)</option>
+                      <option value="CONTINUOUS">Continuous Free-Run (Auto Strobe)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-gray-800 block mb-1">
+                      Active DL.CODE Job Slot (Onboard Camera Profile)
+                    </label>
+                    <select
+                      value={matrixJobId}
+                      onChange={(e) => setMatrixJobId(Number(e.target.value))}
+                      className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-xs font-bold text-gray-800 cursor-pointer bg-white"
+                    >
+                      <option value={1}>Job Slot 1 • recipe1 (Standard 1D Label @ 220 MPM)</option>
+                      <option value={2}>Job Slot 2 • recipe2 (High-Density 1D Label @ 220 MPM)</option>
+                      <option value={3}>Job Slot 3 • recipe3 / coke_3 (Packaging Sheet @ 220 MPM)</option>
+                      {[4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map((j) => (
+                        <option key={j} value={j}>Job Slot {j} • Custom Configuration</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Last Scanned Test Barcode Callout */}
+              {lastScannedBarcode && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg text-xs font-bold flex items-center justify-between animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-emerald-600" />
+                    <span>Last Decoded Barcode: <span className="font-mono text-sm underline">{lastScannedBarcode}</span></span>
+                  </div>
+                  <span className="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-mono">
+                    Optical 1D Decode OK
+                  </span>
+                </div>
+              )}
 
               {/* Feedback toast */}
               {scannerFeedback && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded text-xs font-bold flex items-center gap-2 animate-in fade-in">
-                  <Check size={14} />
+                <div className="p-3 bg-blue-50 border border-blue-200 text-blue-900 rounded-lg text-xs font-bold flex items-center gap-2 animate-in fade-in shadow-2xs">
+                  <Check size={14} className="text-blue-600" />
                   <span>{scannerFeedback}</span>
                 </div>
               )}
 
-              {/* Actions */}
-              <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+              {/* Actions Toolbar */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-200">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleApplyMatrixConfig}
+                    disabled={isApplyingMatrix}
+                    className="bg-[#123681] hover:bg-blue-900 active:scale-95 text-white text-xs font-bold px-5 py-2.5 rounded-md shadow-sm transition-all cursor-pointer flex items-center gap-2"
+                  >
+                    <Sliders size={14} />
+                    <span>{isApplyingMatrix ? 'Arming Matrix 220...' : 'Apply & Arm Matrix 220'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleTriggerTestScan}
+                    disabled={isTriggeringScan}
+                    className="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold px-5 py-2.5 rounded-md shadow-sm transition-all cursor-pointer flex items-center gap-2"
+                  >
+                    <Play size={13} fill="currentColor" />
+                    <span>{isTriggeringScan ? 'Triggering...' : 'Trigger Test Scan'}</span>
+                  </button>
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => {
-                    setScannerFeedback('Test frame captured from scanner successfully (2448x2048, 12ms latency).');
-                    setTimeout(() => setScannerFeedback(null), 3000);
-                  }}
-                  className="bg-[#123681] hover:bg-blue-900 text-white text-xs font-bold px-4 py-2 rounded shadow-sm transition-colors cursor-pointer"
+                  onClick={handleResetMatrixDefaults}
+                  className="border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-bold px-4 py-2.5 rounded-md transition-colors cursor-pointer"
                 >
-                  Capture Test Frame
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setScannerFeedback('Scanner parameters synchronized with hardware controller.');
-                    setTimeout(() => setScannerFeedback(null), 3000);
-                  }}
-                  className="border border-[#123681] text-[#123681] hover:bg-blue-50 text-xs font-bold px-4 py-2 rounded transition-colors cursor-pointer"
-                >
-                  Save Scanner Parameters
+                  Reset 220 MPM Defaults
                 </button>
               </div>
 
