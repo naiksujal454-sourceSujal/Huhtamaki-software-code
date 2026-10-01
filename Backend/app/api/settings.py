@@ -230,6 +230,26 @@ def get_wifi_scan() -> list[dict[str, Any]]:
     return scan_real_wifi_networks()
 
 
+@router.get("/usb/devices")
+def get_usb_devices() -> list[dict[str, Any]]:
+    from app.services.settings_service import get_real_usb_devices
+    return get_real_usb_devices()
+
+
+class StrobeTriggerRequest(BaseModel):
+    channel: str = "ring"
+    intensity: int = 85
+    pulse_width_us: int = 350
+
+
+@router.post("/lights/trigger-strobe")
+def trigger_strobe(payload: StrobeTriggerRequest, request: Request, db: Session = Depends(get_db)) -> dict[str, Any]:
+    from app.services.settings_service import trigger_hardware_strobe
+    result = trigger_hardware_strobe(payload.channel, payload.intensity, payload.pulse_width_us)
+    record_audit(db, action="strobe.triggered", details=payload.model_dump(), ip_address=request_ip(request))
+    return result
+
+
 # ---------------------------------------------
 # REAL HARDWARE / COMPONENT TEST (Test Tab)
 # ---------------------------------------------

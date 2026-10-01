@@ -640,6 +640,26 @@ export async function runPing(target: string = '8.8.8.8'): Promise<{ target: str
 }
 
 // ==========================================
+// USB Peripherals & Strobe Lighting APIs
+// ==========================================
+
+export async function fetchUsbDevices(): Promise<any[]> {
+  const res = await authFetch(`${API_BASE}/settings/usb/devices`, { method: 'GET' });
+  if (!res.ok) throw new Error('Failed to fetch USB devices');
+  return await res.json();
+}
+
+export async function triggerStrobePulse(channel: string, intensity: number, pulseWidthUs: number): Promise<any> {
+  const res = await authFetch(`${API_BASE}/settings/lights/trigger-strobe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel, intensity, pulse_width_us: pulseWidthUs }),
+  });
+  if (!res.ok) throw new Error('Failed to trigger strobe pulse');
+  return await res.json();
+}
+
+// ==========================================
 // Datalogic Matrix 220 Hardware APIs
 // ==========================================
 

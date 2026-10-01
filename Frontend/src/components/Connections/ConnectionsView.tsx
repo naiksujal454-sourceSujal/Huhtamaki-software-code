@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  ScanLine, 
-  Sun, 
-  Monitor, 
-  Usb, 
-  Cpu, 
-  CheckCircle2, 
-  FolderOpen, 
-  ZoomIn, 
-  ZoomOut, 
-  RefreshCw, 
-  Play, 
-  Square, 
-  Heart, 
-  Activity, 
+import {
+  ScanLine,
+  Sun,
+  Monitor,
+  Usb,
+  Cpu,
+  CheckCircle2,
+  FolderOpen,
+  ZoomIn,
+  ZoomOut,
+  RefreshCw,
+  Play,
+  Square,
+  Heart,
+  Activity,
   AlertTriangle,
   Radio,
   Sliders,
@@ -23,14 +23,16 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { testBuzzerPulse, getInspectionStatus } from '../../services/inspectionService.ts';
-import { 
-  runComponentTest, 
+import {
+  runComponentTest,
   fetchNetworkInterfaces,
   getDatalogicStatus,
   pingDatalogic,
   configureDatalogic,
   triggerDatalogicScan,
-  selectDatalogicJob
+  selectDatalogicJob,
+  fetchUsbDevices,
+  triggerStrobePulse
 } from '../../services/api';
 
 type ConnectionTab = 'scanner' | 'lights' | 'ethernet' | 'usb' | 'plc' | 'bypass';
@@ -91,6 +93,9 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
   const [flashFeedback, setFlashFeedback] = useState<string | null>(null);
 
   // USB Tab State
+  const [realUsbDevices, setRealUsbDevices] = useState<any[]>([]);
+  const [isScanningUsb, setIsScanningUsb] = useState(false);
+  const [isTriggeringStrobe, setIsTriggeringStrobe] = useState(false);
   const [usbFeedback, setUsbFeedback] = useState<string | null>(null);
 
   const formatCurrentTime = () => {
@@ -122,7 +127,7 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
         setPlcState(status.state === 'RUNNING' ? 'running' : 'idle');
         setPlcHeartbeatTime(formatCurrentTime());
         if (status.recent_events && status.recent_events.length > 0) {
-          setSamplesLog(status.recent_events.slice(0, 5).map(ev => 
+          setSamplesLog(status.recent_events.slice(0, 5).map(ev =>
             `[${ev.inspected_at || formatCurrentTime()}] Event #${ev.id}: Code ${ev.scanned_code} - ${ev.status} (${ev.recipe_name})`
           ));
         } else {
@@ -157,7 +162,16 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
           setRealInterfaces(net.interfaces);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
+
+    // Live USB Peripheral Discovery from Host OS
+    fetchUsbDevices()
+      .then((devs) => {
+        if (Array.isArray(devs)) {
+          setRealUsbDevices(devs);
+        }
+      })
+      .catch(() => { });
 
     // Live Datalogic Matrix 220 Optical Profile Initialization
     getDatalogicStatus()
@@ -179,7 +193,7 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
           }
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const handleStartPlc = async () => {
@@ -257,6 +271,34 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
     }
   };
 
+  const handleRescanUsb = async () => {
+    setIsScanningUsb(true);
+    try {
+      const devs = await fetchUsbDevices();
+      setRealUsbDevices(devs);
+      setUsbFeedback(`USB bus scanned: ${devs.length} physical/virtual peripheral devices detected.`);
+    } catch (err: any) {
+      setUsbFeedback(`USB bus scan error: ${err.message || err}`);
+    } finally {
+      setIsScanningUsb(false);
+      setTimeout(() => setUsbFeedback(null), 4000);
+    }
+  };
+
+  const handleTestStrobe = async (channel: 'ring' | 'backlight') => {
+    setIsTriggeringStrobe(true);
+    try {
+      const intensity = channel === 'ring' ? ringLightIntensity : backlightIntensity;
+      const res = await triggerStrobePulse(channel, intensity, strobePulseWidth);
+      setFlashFeedback(res.message || `Test strobe triggered on ${channel} light (${strobePulseWidth}μs @ ${intensity}%).`);
+    } catch (err: any) {
+      setFlashFeedback(`Strobe trigger error: ${err.message || err}`);
+    } finally {
+      setIsTriggeringStrobe(false);
+      setTimeout(() => setFlashFeedback(null), 4000);
+    }
+  };
+
   const handleResetMatrixDefaults = () => {
     setExposureUs(120);
     setLiquidLensFocusMm(150);
@@ -269,25 +311,25 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#eff1f4] rounded-md relative border border-gray-300 overflow-hidden shadow-sm">
-      
+
       {/* Top Controls Toolbar (matching Screenshot 1: folder, zoom icons) */}
       <div className="h-10 bg-white border-b border-gray-200 flex items-center justify-between px-3">
         <div className="flex items-center gap-3">
-          <button 
-            onClick={onOpenPreset} 
+          <button
+            onClick={onOpenPreset}
             title="Open Recipe Preset"
             className="text-gray-700 hover:text-black hover:bg-gray-100 p-1.5 rounded transition-colors cursor-pointer"
           >
             <FolderOpen size={18} />
           </button>
           <div className="h-4 w-px bg-gray-300"></div>
-          <button 
+          <button
             title="Zoom In"
             className="text-gray-700 hover:text-black hover:bg-gray-100 p-1.5 rounded transition-colors cursor-pointer"
           >
             <ZoomIn size={18} />
           </button>
-          <button 
+          <button
             title="Zoom Out"
             className="text-gray-700 hover:text-black hover:bg-gray-100 p-1.5 rounded transition-colors cursor-pointer"
           >
@@ -312,14 +354,14 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
 
       {/* Main Container with Left Content and Right Tab Bar */}
       <div className="flex-1 flex overflow-hidden">
-        
+
         {/* Active Tab Content Area */}
         <div className="flex-1 bg-white p-8 overflow-y-auto">
-          
+
           {/* ==================== 1. PLC TAB (Screenshot 1) ==================== */}
           {activeTab === 'plc' && (
             <div className="max-w-4xl flex flex-col gap-6 animate-in fade-in duration-100">
-              
+
               {/* Disconnected / Connected Status Badge */}
               <div className="flex flex-col gap-2">
                 <div className="flex items-center">
@@ -410,7 +452,7 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  
+
                   {/* 1. Gap Sensor Card */}
                   <div className="bg-white border border-gray-200 rounded p-3 shadow-xs flex flex-col justify-between">
                     <div>
@@ -516,7 +558,7 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
           {/* ==================== 2. BYPASS REJECTION TAB (Screenshot 2) ==================== */}
           {activeTab === 'bypass' && (
             <div className="max-w-4xl flex flex-col gap-5 animate-in fade-in duration-100">
-              
+
               {/* Description line */}
               <p className="text-xs font-semibold text-gray-800">
                 Enable bypass rejection to skip product rejection from the production line during inspection.
@@ -535,7 +577,7 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
                     Bypass Production Line Rejection
                   </span>
                 </label>
-                
+
                 <p className="text-xs text-gray-600 pl-8 leading-relaxed max-w-2xl">
                   When enabled, all products will bypass rejection from the production line regardless of quality checks. This setting prevents products from being rejected and removed from the production line, allowing all items to proceed.
                 </p>
@@ -569,7 +611,7 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
           {/* ==================== 3. SCANNER TAB (Datalogic Matrix 220 Optical Controller) ==================== */}
           {activeTab === 'scanner' && (
             <div className="max-w-4xl flex flex-col gap-5 animate-in fade-in duration-100">
-              
+
               {/* Header Title with 220 MPM badge */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-200 pb-3">
                 <div>
@@ -645,7 +687,7 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
 
               {/* 220 MPM Optical Calibration Controls (4 Grid Cards) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
+
                 {/* 1. Exposure Time (Motion Blur Freeze) */}
                 <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs flex flex-col justify-between">
                   <div>
@@ -680,9 +722,8 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
                         key={val}
                         type="button"
                         onClick={() => setExposureUs(val)}
-                        className={`text-[11px] font-bold px-2 py-0.5 rounded border transition-colors cursor-pointer ${
-                          exposureUs === val ? 'bg-[#123681] text-white border-[#123681]' : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200'
-                        }`}
+                        className={`text-[11px] font-bold px-2 py-0.5 rounded border transition-colors cursor-pointer ${exposureUs === val ? 'bg-[#123681] text-white border-[#123681]' : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200'
+                          }`}
                       >
                         {val}μs {val === 120 ? '(Standard)' : ''}
                       </button>
@@ -724,9 +765,8 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
                         key={val}
                         type="button"
                         onClick={() => setLiquidLensFocusMm(val)}
-                        className={`text-[11px] font-bold px-2 py-0.5 rounded border transition-colors cursor-pointer ${
-                          liquidLensFocusMm === val ? 'bg-[#123681] text-white border-[#123681]' : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200'
-                        }`}
+                        className={`text-[11px] font-bold px-2 py-0.5 rounded border transition-colors cursor-pointer ${liquidLensFocusMm === val ? 'bg-[#123681] text-white border-[#123681]' : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200'
+                          }`}
                       >
                         {val}mm {val === 150 ? '(Default)' : ''}
                       </button>
@@ -935,23 +975,21 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
               <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
                 <button
                   type="button"
-                  onClick={() => {
-                    setFlashFeedback('Test strobe triggered on Ring Light (Channel 1).');
-                    setTimeout(() => setFlashFeedback(null), 3000);
-                  }}
-                  className="bg-[#123681] hover:bg-blue-900 text-white text-xs font-bold px-4 py-2 rounded shadow-sm transition-colors cursor-pointer"
+                  onClick={() => handleTestStrobe('ring')}
+                  disabled={isTriggeringStrobe}
+                  className="bg-[#123681] hover:bg-blue-900 active:scale-95 text-white text-xs font-bold px-4 py-2 rounded shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
                 >
-                  Test Strobe (Ring Light)
+                  <Sun size={13} />
+                  <span>{isTriggeringStrobe ? 'Firing...' : 'Test Strobe (Ring Light)'}</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setFlashFeedback('Test strobe triggered on Backlight (Channel 2).');
-                    setTimeout(() => setFlashFeedback(null), 3000);
-                  }}
-                  className="border border-[#123681] text-[#123681] hover:bg-blue-50 text-xs font-bold px-4 py-2 rounded transition-colors cursor-pointer"
+                  onClick={() => handleTestStrobe('backlight')}
+                  disabled={isTriggeringStrobe}
+                  className="border border-[#123681] text-[#123681] hover:bg-blue-50 active:scale-95 text-xs font-bold px-4 py-2 rounded transition-all cursor-pointer flex items-center gap-1.5"
                 >
-                  Test Strobe (Backlight)
+                  <Sun size={13} />
+                  <span>{isTriggeringStrobe ? 'Firing...' : 'Test Strobe (Backlight)'}</span>
                 </button>
               </div>
             </div>
@@ -1054,44 +1092,34 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
               </div>
 
               <div className="space-y-3">
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Usb size={18} className="text-[#123681]" />
-                    <div>
-                      <span className="text-xs font-bold text-gray-800 block">Honeywell 1950G Handheld Scanner</span>
-                      <span className="text-[11px] text-gray-500">USB 2.0 HID Keyboard Wedge Emulation • Serial #21194B4810</span>
-                    </div>
+                {realUsbDevices.length === 0 ? (
+                  <div className="p-4 text-center text-gray-400 text-xs italic bg-slate-50 border border-slate-200 rounded-lg">
+                    Scanning USB bus for physical peripheral devices...
                   </div>
-                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded">
-                    Active
-                  </span>
-                </div>
-
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <ShieldCheck size={18} className="text-[#123681]" />
-                    <div>
-                      <span className="text-xs font-bold text-gray-800 block">Pixtron Hardware Security Dongle</span>
-                      <span className="text-[11px] text-gray-500">USB Cryptographic Key • License Valid (Perpetual Enterprise)</span>
+                ) : (
+                  realUsbDevices.map((dev, idx) => (
+                    <div key={idx} className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between hover:bg-slate-100 transition-colors">
+                      <div className="flex items-center gap-3">
+                        {dev.class_name?.toLowerCase().includes('security') ? (
+                          <ShieldCheck size={18} className="text-[#123681]" />
+                        ) : dev.class_name?.toLowerCase().includes('printer') ? (
+                          <Printer size={18} className="text-[#123681]" />
+                        ) : (
+                          <Usb size={18} className="text-[#123681]" />
+                        )}
+                        <div>
+                          <span className="text-xs font-bold text-gray-800 block">{dev.name}</span>
+                          <span className="text-[11px] text-gray-500">
+                            {dev.interface || 'USB Bus Interface'} • {dev.class_name || 'Peripheral'}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded">
+                        {dev.status || 'Active'}
+                      </span>
                     </div>
-                  </div>
-                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded">
-                    Verified
-                  </span>
-                </div>
-
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Printer size={18} className="text-[#123681]" />
-                    <div>
-                      <span className="text-xs font-bold text-gray-800 block">Zebra ZT411 Industrial Thermal Label Printer</span>
-                      <span className="text-[11px] text-gray-500">USB Virtual COM Port (COM4) • 300 DPI • Status: Ready</span>
-                    </div>
-                  </div>
-                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded">
-                    Ready
-                  </span>
-                </div>
+                  ))
+                )}
               </div>
 
               {usbFeedback && (
@@ -1104,13 +1132,12 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
               <div className="flex items-center gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setUsbFeedback('USB bus scanned: 3 peripheral devices enumerated successfully.');
-                    setTimeout(() => setUsbFeedback(null), 3000);
-                  }}
-                  className="bg-[#123681] hover:bg-blue-900 text-white text-xs font-bold px-4 py-2 rounded shadow-sm transition-colors cursor-pointer"
+                  onClick={handleRescanUsb}
+                  disabled={isScanningUsb}
+                  className="bg-[#123681] hover:bg-blue-900 active:scale-95 text-white text-xs font-bold px-4 py-2 rounded shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
                 >
-                  Rescan USB Bus
+                  <RefreshCw size={13} className={isScanningUsb ? 'animate-spin' : ''} />
+                  <span>{isScanningUsb ? 'Scanning Bus...' : 'Rescan USB Bus'}</span>
                 </button>
                 <button
                   type="button"
@@ -1130,15 +1157,14 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
 
         {/* Right Vertical Tabs Bar (Matching Screenshot 1 & 2 exactly) */}
         <div className="w-48 bg-white border-l border-gray-200 flex flex-col divide-y divide-gray-100 shrink-0">
-          
+
           {/* Scanner Tab */}
           <button
             onClick={() => setActiveTab('scanner')}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-bold transition-colors cursor-pointer ${
-              activeTab === 'scanner'
+            className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-bold transition-colors cursor-pointer ${activeTab === 'scanner'
                 ? 'bg-[#dce6f2] text-[#123681] shadow-inner font-extrabold'
                 : 'text-gray-600 hover:bg-gray-50'
-            }`}
+              }`}
           >
             <ScanLine size={16} />
             <span>{t('Scanner')}</span>
@@ -1147,11 +1173,10 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
           {/* Lights Tab */}
           <button
             onClick={() => setActiveTab('lights')}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-bold transition-colors cursor-pointer ${
-              activeTab === 'lights'
+            className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-bold transition-colors cursor-pointer ${activeTab === 'lights'
                 ? 'bg-[#dce6f2] text-[#123681] shadow-inner font-extrabold'
                 : 'text-gray-600 hover:bg-gray-50'
-            }`}
+              }`}
           >
             <Sun size={16} />
             <span>{t('Lights')}</span>
@@ -1160,11 +1185,10 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
           {/* Ethernet Tab */}
           <button
             onClick={() => setActiveTab('ethernet')}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-bold transition-colors cursor-pointer ${
-              activeTab === 'ethernet'
+            className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-bold transition-colors cursor-pointer ${activeTab === 'ethernet'
                 ? 'bg-[#dce6f2] text-[#123681] shadow-inner font-extrabold'
                 : 'text-gray-600 hover:bg-gray-50'
-            }`}
+              }`}
           >
             <Monitor size={16} />
             <span>{t('Ethernet')}</span>
@@ -1173,11 +1197,10 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
           {/* USB Tab */}
           <button
             onClick={() => setActiveTab('usb')}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-bold transition-colors cursor-pointer ${
-              activeTab === 'usb'
+            className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-bold transition-colors cursor-pointer ${activeTab === 'usb'
                 ? 'bg-[#dce6f2] text-[#123681] shadow-inner font-extrabold'
                 : 'text-gray-600 hover:bg-gray-50'
-            }`}
+              }`}
           >
             <Usb size={16} />
             <span>{t('USB')}</span>
@@ -1186,11 +1209,10 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
           {/* PLC Tab */}
           <button
             onClick={() => setActiveTab('plc')}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-bold transition-colors cursor-pointer ${
-              activeTab === 'plc'
+            className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-bold transition-colors cursor-pointer ${activeTab === 'plc'
                 ? 'bg-[#dce6f2] text-[#123681] shadow-inner font-extrabold'
                 : 'text-gray-600 hover:bg-gray-50'
-            }`}
+              }`}
           >
             <Cpu size={16} />
             <span>{t('PLC')}</span>
@@ -1199,11 +1221,10 @@ const ConnectionsView: React.FC<ConnectionsViewProps> = ({ onNavigate, onOpenPre
           {/* Bypass Rejection Tab */}
           <button
             onClick={() => setActiveTab('bypass')}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-bold transition-colors cursor-pointer ${
-              activeTab === 'bypass'
+            className={`w-full flex items-center gap-3 px-4 py-3.5 text-xs font-bold transition-colors cursor-pointer ${activeTab === 'bypass'
                 ? 'bg-[#dce6f2] text-[#123681] shadow-inner font-extrabold'
                 : 'text-gray-600 hover:bg-gray-50'
-            }`}
+              }`}
           >
             <CheckCircle2 size={16} />
             <span>{t('Bypass Rejection')}</span>
