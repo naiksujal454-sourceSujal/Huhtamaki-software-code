@@ -416,7 +416,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
             <thead className="bg-gray-100 text-gray-600 font-bold border-b border-gray-200 text-xs">
               <tr>
                 <th className="px-4 py-2">ID</th>
-                <th className="px-4 py-2">{t('Time')}</th>
+                <th className="px-4 py-2 whitespace-nowrap">{t('Time')}</th>
                 <th className="px-4 py-2">{t('Preset')}</th>
                 <th className="px-4 py-2">Scanned Barcode</th>
                 <th className="px-4 py-2">Expected Barcode</th>
@@ -436,8 +436,8 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
                   const isPass = res.status === 'PASS' || res.status === 'OK';
                   return (
                     <tr key={idx} className={`border-b border-gray-100 last:border-none text-xs ${!isPass ? 'bg-red-50/50' : ''}`}>
-                      <td className="px-4 py-2 font-mono font-bold text-gray-600">#{res.id}</td>
-                      <td className="px-4 py-2 text-gray-600 font-mono">{res.time}</td>
+                      <td className="px-4 py-2 font-mono font-bold text-gray-600 whitespace-nowrap">#{res.id}</td>
+                      <td className="px-4 py-2 text-gray-600 font-mono whitespace-nowrap">{res.time}</td>
                       <td className="px-4 py-2 text-gray-700 font-bold">{res.preset}</td>
                       <td className="px-4 py-2 font-mono font-bold text-gray-800">
                         <span className={isPass ? 'text-gray-800' : 'text-red-600 font-black'}>

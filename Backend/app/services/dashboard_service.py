@@ -29,6 +29,13 @@ def invalidate_dashboard_cache() -> None:
     _cached_summary_time = 0.0
 
 
+def _format_time_with_ms(dt: datetime | None) -> str | None:
+    if not dt:
+        return None
+    ms = dt.microsecond // 1000
+    return f"{dt.strftime('%I:%M:%S')}.{ms:03d} {dt.strftime('%p')}"
+
+
 def get_dashboard_summary(
     db: Session,
     *,
@@ -44,7 +51,7 @@ def get_dashboard_summary(
     if _cached_summary is not None and cache_key == _cached_summary_key and (now - _cached_summary_time) < 2.5:
         return _cached_summary
 
-    statement = select(Inspection).order_by(Inspection.created_at.desc())
+    statement = select(Inspection).order_by(Inspection.created_at.desc(), Inspection.id.desc())
     if from_date is not None:
         statement = statement.where(Inspection.created_at >= _start_of_day(from_date))
     if to_date is not None:
@@ -85,7 +92,7 @@ def get_dashboard_summary(
     recent_results = [
         {
             "id": item.id,
-            "time": item.created_at.strftime("%I:%M:%S %p") if item.created_at else None,
+            "time": _format_time_with_ms(item.created_at),
             "preset": item.preset or "Preset",
             "image": item.image_name or "",
             "status": "PASS" if item.status == "OK" else "NOT_OK",

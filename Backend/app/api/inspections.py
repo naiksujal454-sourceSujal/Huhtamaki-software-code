@@ -106,7 +106,7 @@ def export_inspections_csv(
     ])
 
     for row in inspections:
-        ts = row.created_at.strftime("%Y-%m-%d %H:%M:%S") if row.created_at else ""
+        ts = row.created_at.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3] if row.created_at else ""
         meta = row.metadata_json or {}
         scanned_code = meta.get("scanned_code") or ""
         expected_code = meta.get("expected_code") or ""

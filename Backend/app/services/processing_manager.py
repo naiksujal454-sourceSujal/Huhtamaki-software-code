@@ -225,6 +225,20 @@ class ProcessingManager:
         try:
             with SessionLocal() as db:
                 for event in events:
+                    # Parse authentic millisecond-resolution acquisition timestamp
+                    event_time = None
+                    inspected_str = event.get("inspected_at")
+                    if inspected_str:
+                        try:
+                            event_time = datetime.strptime(inspected_str, "%Y-%m-%d %H:%M:%S.%f")
+                        except Exception:
+                            try:
+                                event_time = datetime.fromisoformat(inspected_str)
+                            except Exception:
+                                pass
+                    if not event_time:
+                        event_time = datetime.now()
+
                     db_record = Inspection(
                         inspection_key=f"{self.session_id}-{event['id']}",
                         status=event["status"],
@@ -235,15 +249,23 @@ class ProcessingManager:
                         print_verified=(event["status"] == "OK"),
                         print_status="VERIFIED" if event["status"] == "OK" else "MISMATCH",
                         defects=[] if event["status"] == "OK" else [{"reason": event["reason"], "code": event["scanned_code"]}],
+                        created_at=event_time,
                         metadata_json={
                             "scanned_code": event["scanned_code"],
                             "expected_code": event["expected_code"],
                             "confidence": event["confidence"],
                             "reason": event["reason"],
+                            "inspected_at": inspected_str,
                         },
                     )
                     db.add(db_record)
                 db.commit()
+
+            try:
+                from app.services.dashboard_service import invalidate_dashboard_cache
+                invalidate_dashboard_cache()
+            except Exception:
+                pass
         except Exception as e:
             logger.warning(f"Error persisting batch to DB: {e}")
 
