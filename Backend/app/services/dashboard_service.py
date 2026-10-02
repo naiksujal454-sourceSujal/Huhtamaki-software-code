@@ -66,18 +66,51 @@ def get_dashboard_summary(
     print_pass = db.scalar(select(func.count(Inspection.id)).where(Inspection.print_status.in_(["OK", "VERIFIED"]))) or 0
     print_fail = db.scalar(select(func.count(Inspection.id)).where(Inspection.print_status.in_(["NOT_OK", "MISMATCH", "FAIL"]))) or 0
 
-    # Load recent 300 inspections for defect & trend breakdown instead of entire database history
+    today_dt = date.today()
+    start_d = from_date or (today_dt - timedelta(days=6))
+    end_d = to_date or today_dt
+
+    # Initialize full contiguous date range so every single day in the full week is present
+    daily: dict[date, dict[str, int]] = {}
+    curr = start_d
+    while curr <= end_d:
+        daily[curr] = {"total": 0, "passed": 0, "failed": 0}
+        curr += timedelta(days=1)
+
+    # Fast SQL aggregation across the full week
+    trend_stmt = (
+        select(
+            func.date(Inspection.created_at).label("day"),
+            Inspection.status,
+            func.count(Inspection.id).label("cnt"),
+        )
+        .where(Inspection.created_at >= _start_of_day(start_d))
+        .where(Inspection.created_at < _start_of_day(end_d + timedelta(days=1)))
+        .group_by(func.date(Inspection.created_at), Inspection.status)
+    )
+    for day_val, status_val, count_val in db.execute(trend_stmt).all():
+        d = day_val
+        if isinstance(d, datetime):
+            d = d.date()
+        elif isinstance(d, str):
+            try:
+                d = datetime.strptime(d, "%Y-%m-%d").date()
+            except Exception:
+                pass
+        if d in daily:
+            daily[d]["total"] += count_val
+            if status_val == "OK":
+                daily[d]["passed"] += count_val
+            else:
+                daily[d]["failed"] += count_val
+
+    # Load recent 300 inspections for defect breakdown and recent table
     recent_inspections = list(db.scalars(statement.limit(300)).all())
 
     reason_counts: Counter[str] = Counter()
     category_counts: Counter[str] = Counter()
-    daily: defaultdict[date, dict[str, int]] = defaultdict(lambda: {"total": 0, "passed": 0, "failed": 0})
 
     for inspection in recent_inspections:
-        inspection_date = _as_date(inspection.created_at)
-        daily[inspection_date]["total"] += 1
-        daily[inspection_date]["passed" if inspection.status == "OK" else "failed"] += 1
-
         if inspection.defects:
             for defect in inspection.defects:
                 reason = str(defect.get("reason", "unknown"))

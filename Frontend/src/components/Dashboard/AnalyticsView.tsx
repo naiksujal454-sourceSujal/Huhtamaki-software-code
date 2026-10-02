@@ -128,18 +128,30 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Format trend data for chart
+  // Format 7-day trend data for chart
   const chartData = summary?.trend && summary.trend.length > 0
-    ? summary.trend.map((pt) => ({
-      name: String(pt.date).slice(5),
-      pass: pt.passed,
-      fail: pt.failed,
-    }))
+    ? summary.trend.map((pt) => {
+      let label = String(pt.date).slice(5);
+      try {
+        const d = new Date(pt.date + 'T00:00:00');
+        if (!isNaN(d.getTime())) {
+          const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+          label = `${dayName} ${d.getDate()}/${d.getMonth() + 1}`;
+        }
+      } catch { }
+      return {
+        name: label,
+        pass: pt.passed,
+        fail: pt.failed,
+        total: pt.total,
+      };
+    })
     : [
       {
         name: 'Today',
         pass: summary ? summary.passed : 0,
         fail: summary ? summary.failed : 0,
+        total: summary ? summary.total : 0,
       },
     ];
 
@@ -412,52 +424,61 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
             <h3 className="text-sm font-bold text-gray-700">{t('Recent Results')}</h3>
             <span className="text-xs text-gray-500 font-mono">Last {recentResults.length} inspections stored</span>
           </div>
-          <table className="w-full text-sm text-left">
-            <thead className="bg-gray-100 text-gray-600 font-bold border-b border-gray-200 text-xs">
-              <tr>
-                <th className="px-4 py-2">ID</th>
-                <th className="px-4 py-2 whitespace-nowrap">{t('Time')}</th>
-                <th className="px-4 py-2">{t('Preset')}</th>
-                <th className="px-4 py-2">Scanned Barcode</th>
-                <th className="px-4 py-2">Expected Barcode</th>
-                <th className="px-4 py-2 text-center">{t('Status')}</th>
-                <th className="px-4 py-2 text-right">{t('ms')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentResults.length === 0 ? (
+          {/* Scrollable Table Viewport: 6 to 7 rows visible with sticky header */}
+          <div
+            className="max-h-[275px] overflow-y-auto overflow-x-auto"
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#94a3b8 #f8fafc',
+            }}
+          >
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-100 text-gray-600 font-bold border-b border-gray-200 text-xs sticky top-0 z-10 shadow-xs">
                 <tr>
-                  <td colSpan={7} className="text-center py-6 text-xs text-gray-400">
-                    No inspection results recorded yet. Start inspection to populate live data.
-                  </td>
+                  <th className="px-4 py-2">ID</th>
+                  <th className="px-4 py-2 whitespace-nowrap">{t('Time')}</th>
+                  <th className="px-4 py-2">{t('Preset')}</th>
+                  <th className="px-4 py-2">Scanned Barcode</th>
+                  <th className="px-4 py-2">Expected Barcode</th>
+                  <th className="px-4 py-2 text-center">{t('Status')}</th>
+                  <th className="px-4 py-2 text-right">{t('ms')}</th>
                 </tr>
-              ) : (
-                recentResults.map((res, idx) => {
-                  const isPass = res.status === 'PASS' || res.status === 'OK';
-                  return (
-                    <tr key={idx} className={`border-b border-gray-100 last:border-none text-xs ${!isPass ? 'bg-red-50/50' : ''}`}>
-                      <td className="px-4 py-2 font-mono font-bold text-gray-600 whitespace-nowrap">#{res.id}</td>
-                      <td className="px-4 py-2 text-gray-600 font-mono whitespace-nowrap">{res.time}</td>
-                      <td className="px-4 py-2 text-gray-700 font-bold">{res.preset}</td>
-                      <td className="px-4 py-2 font-mono font-bold text-gray-800">
-                        <span className={isPass ? 'text-gray-800' : 'text-red-600 font-black'}>
-                          {res.scanned_code || '-'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 font-mono text-gray-600">{res.expected_code || '-'}</td>
-                      <td className="px-4 py-2 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase ${isPass ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-red-100 text-red-800 border border-red-300'
-                          }`}>
-                          {isPass ? 'PASS' : 'FAIL'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 text-right text-gray-600 font-mono">{res.ms}ms</td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {recentResults.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center py-6 text-xs text-gray-400">
+                      No inspection results recorded yet. Start inspection to populate live data.
+                    </td>
+                  </tr>
+                ) : (
+                  recentResults.map((res, idx) => {
+                    const isPass = res.status === 'PASS' || res.status === 'OK';
+                    return (
+                      <tr key={idx} className={`border-b border-gray-100 last:border-none text-xs ${!isPass ? 'bg-red-50/50' : ''}`}>
+                        <td className="px-4 py-2 font-mono font-bold text-gray-600 whitespace-nowrap">#{res.id}</td>
+                        <td className="px-4 py-2 text-gray-600 font-mono whitespace-nowrap">{res.time}</td>
+                        <td className="px-4 py-2 text-gray-700 font-bold">{res.preset}</td>
+                        <td className="px-4 py-2 font-mono font-bold text-gray-800">
+                          <span className={isPass ? 'text-gray-800' : 'text-red-600 font-black'}>
+                            {res.scanned_code || '-'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 font-mono text-gray-600">{res.expected_code || '-'}</td>
+                        <td className="px-4 py-2 text-center">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase ${isPass ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-red-100 text-red-800 border border-red-300'
+                            }`}>
+                            {isPass ? 'PASS' : 'FAIL'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-right text-gray-600 font-mono">{res.ms}ms</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
 
           {/* Table Footer with Export to CSV on the Right */}
           <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-t border-gray-200">
