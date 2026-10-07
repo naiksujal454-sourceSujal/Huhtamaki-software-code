@@ -391,7 +391,7 @@ function App() {
             <div className="flex flex-col w-full h-full gap-2 relative min-h-0 overflow-hidden">
               
               {/* TOP SECTION: Left = Preset Info & Reference Image, Right = Live Verification Results */}
-              <div className="flex-1 flex gap-2 min-h-0 basis-[38%] overflow-hidden">
+              <div className="flex-1 flex gap-2 min-h-[240px] basis-[48%] overflow-hidden">
                 
                 {/* Left Column: Preset Info & Container Reference Image */}
                 <div className="flex-1 h-full min-h-0 overflow-hidden">
@@ -436,7 +436,7 @@ function App() {
               </div>
 
               {/* BOTTOM SECTION: Full Width Event Logs (100% Width across entire screen) */}
-              <div className="flex-1 min-h-0 basis-[62%] flex flex-col bg-white p-1.5 shadow-sm rounded-md border border-gray-200 overflow-hidden">
+              <div className="flex-1 min-h-[200px] basis-[52%] flex flex-col bg-white p-1.5 shadow-sm rounded-md border border-gray-200 overflow-hidden">
                 <div className="bg-[#183b80] text-white font-bold text-sm px-3 py-1.5 flex items-center justify-between shrink-0 rounded-t-sm">
                   <span>Event Logs</span>
                   <span className="text-[11px] font-mono font-normal opacity-90">Real-time Verification Stream</span>

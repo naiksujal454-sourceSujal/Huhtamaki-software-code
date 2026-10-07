@@ -33,7 +33,7 @@ const PresetViewer: React.FC<PresetViewerProps> = ({
 
   return (
     <div className="flex-1 flex flex-col w-full h-full bg-white relative p-1.5 rounded-md shadow-sm border border-gray-200 select-none overflow-hidden gap-1.5">
-      
+
       {/* Top Box: Preset Name & Target Data */}
       <div className="bg-slate-50 border border-gray-200 rounded px-3 py-2 flex items-center justify-between shrink-0">
         {/* Preset & Target Info */}
