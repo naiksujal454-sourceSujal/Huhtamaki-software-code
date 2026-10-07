@@ -8,6 +8,8 @@ interface ExtractionDetailsProps {
   isRunning: boolean;
   activeRecipeName?: string;
   expectedCode?: string;
+  hasActiveAlarm?: boolean;
+  onClearAlarm?: () => void;
 }
 
 const ExtractionDetails: React.FC<ExtractionDetailsProps> = ({
@@ -15,6 +17,8 @@ const ExtractionDetails: React.FC<ExtractionDetailsProps> = ({
   isRunning,
   activeRecipeName,
   expectedCode,
+  hasActiveAlarm = false,
+  onClearAlarm,
 }) => {
   const [, setFmtTick] = useState(0);
   useEffect(() => {
@@ -50,9 +54,21 @@ const ExtractionDetails: React.FC<ExtractionDetailsProps> = ({
               <AlertCircle size={15} className="text-yellow-300" />
               <span>STATUS: NOT OK ({lastEvent.reason})</span>
             </div>
-            <span className="bg-red-800 text-[10px] font-mono px-2 py-0.5 rounded uppercase">
-              INTERLOCK STOP
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="bg-red-800 text-[10px] font-mono px-2 py-0.5 rounded uppercase">
+                INTERLOCK STOP
+              </span>
+              {onClearAlarm && (
+                <button
+                  type="button"
+                  onClick={onClearAlarm}
+                  className="bg-white hover:bg-yellow-50 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded shadow-2xs cursor-pointer transition-colors active:scale-95"
+                  title="Clear alert, silence buzzer, and resume inspection"
+                >
+                  Turn Alert OFF
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

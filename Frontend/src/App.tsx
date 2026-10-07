@@ -404,7 +404,8 @@ function App() {
                     onToggleDefects={handleToggleDefects}
                     stopOnDefect={stopOnDefect}
                     onToggleStopOnDefect={handleToggleStopOnDefect}
-                    onInjectDefect={handleInjectDefect}
+                    hasActiveAlarm={Boolean(alarmDetails !== null || (lastEvent?.status === 'NOK' && inspectionState === 'PAUSED'))}
+                    onClearAlarm={handleResumeFromAlarm}
                     onOpenScannerConfig={() => {
                       auditLogger.logNavigation('connections', 'Opened Datalogic Matrix 220 Hardware Config');
                       setConnectionsInitialTab('scanner');
@@ -429,6 +430,8 @@ function App() {
                       lastEvent={lastEvent}
                       activeRecipeName={activeRecipe.name}
                       expectedCode={activeRecipe.targetCode}
+                      hasActiveAlarm={Boolean(alarmDetails !== null || (lastEvent?.status === 'NOK' && inspectionState === 'PAUSED'))}
+                      onClearAlarm={handleResumeFromAlarm}
                     />
                   </div>
                 </div>
