@@ -162,13 +162,14 @@ const EventLogs: React.FC<EventLogsProps> = ({ isRunning, recentEvents = [], las
       {activeTab === 'scans' ? (
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {/* Table Header */}
-          <div className="flex text-[11px] font-bold text-gray-500 px-3 py-1.5 border-b border-gray-200 bg-slate-50 shrink-0">
-            <div className="w-[8%]">S/N</div>
-            <div className="w-[28%] pr-3">Timestamp</div>
-            <div className="w-[13%]">Status</div>
-            <div className="w-[25%]">Scanned Code</div>
-            <div className="w-[12%] text-right">Latency</div>
-            <div className="w-[14%] text-right">Confidence</div>
+          <div className="flex text-[11px] font-bold text-gray-500 px-4 py-2 border-b border-gray-200 bg-slate-50 shrink-0">
+            <div className="w-[6%]">S/N</div>
+            <div className="w-[20%] pr-3">Timestamp</div>
+            <div className="w-[10%]">Status</div>
+            <div className="w-[24%]">Scanned 1D Barcode</div>
+            <div className="w-[22%]">Expected Reference Code</div>
+            <div className="w-[9%] text-right">Latency</div>
+            <div className="w-[9%] text-right">Confidence</div>
           </div>
 
           {/* Table Body */}
@@ -192,7 +193,7 @@ const EventLogs: React.FC<EventLogsProps> = ({ isRunning, recentEvents = [], las
                 return (
                   <div
                     key={`${ev.id}-${ev.inspected_at || ''}-${idx}`}
-                    className={`flex items-center text-xs px-3 py-1.5 transition-colors ${
+                    className={`flex items-center text-xs px-4 py-1.5 transition-colors ${
                       idx === 0
                         ? isOk
                           ? 'bg-emerald-50/70 font-semibold'
@@ -200,13 +201,13 @@ const EventLogs: React.FC<EventLogsProps> = ({ isRunning, recentEvents = [], las
                         : 'hover:bg-gray-50'
                     }`}
                   >
-                    <div className="w-[8%] font-mono font-bold text-gray-700">#{ev.id}</div>
-                    <div className="w-[28%] pr-3 text-gray-600 font-mono text-[11px] whitespace-nowrap">
+                    <div className="w-[6%] font-mono font-bold text-gray-700">#{ev.id}</div>
+                    <div className="w-[20%] pr-3 text-gray-600 font-mono text-[11px] whitespace-nowrap">
                       {ev.inspected_at ? formatDateTime(ev.inspected_at, true) : 'Just now'}
                     </div>
-                    <div className="w-[13%]">
+                    <div className="w-[10%]">
                       <span
-                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black uppercase ${
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase ${
                           isOk
                             ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                             : 'bg-red-100 text-red-800 border border-red-300 animate-pulse'
@@ -216,15 +217,18 @@ const EventLogs: React.FC<EventLogsProps> = ({ isRunning, recentEvents = [], las
                         <span>{ev.status}</span>
                       </span>
                     </div>
-                    <div className="w-[25%] font-mono text-[11px] truncate" title={ev.scanned_code}>
+                    <div className="w-[24%] font-mono text-[11px] truncate" title={ev.scanned_code}>
                       <span className={isOk ? 'text-gray-800 font-semibold' : 'text-red-600 font-extrabold'}>
                         {ev.scanned_code || 'UNREAD'}
                       </span>
                     </div>
-                    <div className="w-[12%] text-right font-mono text-[11px] text-gray-600 font-semibold">
+                    <div className="w-[22%] font-mono text-[11px] text-gray-600 truncate" title={ev.expected_code}>
+                      {ev.expected_code || '-'}
+                    </div>
+                    <div className="w-[9%] text-right font-mono text-[11px] text-gray-600 font-semibold">
                       {ev.latency_ms}ms
                     </div>
-                    <div className="w-[14%] text-right font-mono text-[11px] text-gray-500">
+                    <div className="w-[9%] text-right font-mono text-[11px] text-gray-500">
                       {ev.confidence ? `${ev.confidence}%` : '99.8%'}
                     </div>
                   </div>
@@ -237,12 +241,12 @@ const EventLogs: React.FC<EventLogsProps> = ({ isRunning, recentEvents = [], las
         /* Tab 2: System Audit Trail Table */
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {/* Table Header */}
-          <div className="flex text-[11px] font-bold text-gray-500 px-3 py-1.5 border-b border-gray-200 bg-slate-50 shrink-0">
-            <div className="w-[8%]">S/N</div>
-            <div className="w-[24%]">Timestamp</div>
-            <div className="w-[22%]">Action</div>
-            <div className="w-[16%]">User</div>
-            <div className="w-[30%]">Description</div>
+          <div className="flex text-[11px] font-bold text-gray-500 px-4 py-2 border-b border-gray-200 bg-slate-50 shrink-0">
+            <div className="w-[6%]">S/N</div>
+            <div className="w-[20%]">Timestamp</div>
+            <div className="w-[18%]">Action</div>
+            <div className="w-[14%]">User</div>
+            <div className="w-[42%]">Description</div>
           </div>
 
           {/* Table Body */}
@@ -259,13 +263,13 @@ const EventLogs: React.FC<EventLogsProps> = ({ isRunning, recentEvents = [], las
               logs.map((log, idx) => (
                 <div
                   key={idx}
-                  className={`flex items-start text-xs px-3 py-1.5 transition-colors ${
+                  className={`flex items-start text-xs px-4 py-1.5 transition-colors ${
                     log.active ? 'bg-blue-50/70 font-semibold' : 'hover:bg-gray-50'
                   }`}
                 >
-                  <div className="w-[8%] font-bold text-gray-700">{log.sn}</div>
-                  <div className="w-[24%] text-gray-600 font-mono text-[11px] whitespace-nowrap">{log.time}</div>
-                  <div className="w-[22%] pr-1">
+                  <div className="w-[6%] font-bold text-gray-700">{log.sn}</div>
+                  <div className="w-[20%] text-gray-600 font-mono text-[11px] whitespace-nowrap">{log.time}</div>
+                  <div className="w-[18%] pr-1">
                     <span
                       className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide truncate max-w-full ${
                         log.fail ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-[#153472]'
@@ -274,9 +278,9 @@ const EventLogs: React.FC<EventLogsProps> = ({ isRunning, recentEvents = [], las
                       {log.event}
                     </span>
                   </div>
-                  <div className="w-[16%] text-gray-700 font-medium text-[11px] truncate">{log.actor}</div>
+                  <div className="w-[14%] text-gray-700 font-medium text-[11px] truncate">{log.actor}</div>
                   <div
-                    className={`w-[30%] whitespace-pre-line text-[11px] leading-snug break-words ${
+                    className={`w-[42%] whitespace-pre-line text-[11px] leading-snug break-words ${
                       log.fail ? 'text-red-600 font-bold' : 'text-gray-700'
                     }`}
                   >

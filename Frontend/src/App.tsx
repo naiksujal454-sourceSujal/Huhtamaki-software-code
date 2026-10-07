@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react';
 import Header from './components/Header/Header.tsx';
 import type { InspectionState } from './components/Header/ControlsWidget.tsx';
 import ScannerViewer from './components/ScannerViewer/ScannerViewer.tsx';
+import PresetViewer from './components/ScannerViewer/PresetViewer.tsx';
 import ResultsPanel from './components/ResultsPanel/ResultsPanel.tsx';
+import ExtractionDetails from './components/ResultsPanel/ExtractionDetails.tsx';
+import EventLogs from './components/ResultsPanel/EventLogs.tsx';
 import Footer from './components/Footer/Footer.tsx';
 import EdgePanel from './components/Decorations/EdgePanel.tsx';
 import AnalyticsView from './components/Dashboard/AnalyticsView.tsx';
@@ -385,44 +388,68 @@ function App() {
 
         <div className="flex-1 flex overflow-hidden mt-2 mb-2 min-h-0">
           {currentView === 'inspection' && (
-            <div className="flex w-full h-full gap-2 relative min-h-0">
-              <div className="flex-1 h-full overflow-hidden min-h-0">
-                <ScannerViewer
-                  isRunning={isRunning || inspectionState === 'PAUSED'}
-                  rawImageUrl={lastEvent?.raw_image_url || activeRecipe.rawImage || activeRecipe.image}
-                  processedImageUrl={lastEvent?.processed_image_url || activeRecipe.processedImage || getApiUrl(`/api/recipes/processed/${activeRecipe.name}.png`)}
-                  activeImageUrl={lastEvent?.image_url || activeRecipe.processedImage || activeRecipe.image}
-                  activeRecipeName={activeRecipe.name}
-                  lastStatus={lastEvent?.status || 'IDLE'}
-                  scannedCode={lastEvent?.scanned_code}
-                  expectedCode={activeRecipe.targetCode}
-                  scanSequence={lastEvent?.id || counters.total}
-                  latencyMs={lastEvent?.latency_ms || '0'}
-                  simulateDefects={simulateDefects}
-                  onToggleDefects={handleToggleDefects}
-                  stopOnDefect={stopOnDefect}
-                  onToggleStopOnDefect={handleToggleStopOnDefect}
-                  onInjectDefect={handleInjectDefect}
-                  onOpenScannerConfig={() => {
-                    auditLogger.logNavigation('connections', 'Opened Datalogic Matrix 220 Hardware Config');
-                    setConnectionsInitialTab('scanner');
-                    setCurrentView('connections');
-                  }}
-                  onOpenPreset={() => {
-                    auditLogger.logAction('Preset', 'preset.open_dialog', 'Opened preset selection dialog');
-                    setIsPresetModalOpen(true);
-                  }}
-                />
+            <div className="flex flex-col w-full h-full gap-2 relative min-h-0 overflow-hidden">
+              
+              {/* TOP SECTION: Left = Preset Info & Reference Image, Right = Live Verification Results */}
+              <div className="flex-1 flex gap-2 min-h-0 basis-[56%] overflow-hidden">
+                
+                {/* Left Column: Preset Info & Container Reference Image */}
+                <div className="flex-1 h-full min-h-0 overflow-hidden">
+                  <PresetViewer
+                    isRunning={isRunning || inspectionState === 'PAUSED'}
+                    activeImageUrl={activeRecipe.processedImage || activeRecipe.image || activeRecipe.rawImage}
+                    activeRecipeName={activeRecipe.name}
+                    expectedCode={activeRecipe.targetCode}
+                    simulateDefects={simulateDefects}
+                    onToggleDefects={handleToggleDefects}
+                    stopOnDefect={stopOnDefect}
+                    onToggleStopOnDefect={handleToggleStopOnDefect}
+                    onInjectDefect={handleInjectDefect}
+                    onOpenScannerConfig={() => {
+                      auditLogger.logNavigation('connections', 'Opened Datalogic Matrix 220 Hardware Config');
+                      setConnectionsInitialTab('scanner');
+                      setCurrentView('connections');
+                    }}
+                    onOpenPreset={() => {
+                      auditLogger.logAction('Preset', 'preset.open_dialog', 'Opened preset selection dialog');
+                      setIsPresetModalOpen(true);
+                    }}
+                  />
+                </div>
+
+                {/* Right Column: Results Panel (Inspection Results) */}
+                <div className="flex-1 h-full min-h-0 overflow-hidden flex flex-col bg-white p-1.5 shadow-sm rounded-md border border-gray-200">
+                  <div className="bg-[#183b80] text-white font-bold text-sm px-3 py-1.5 flex items-center justify-between shrink-0 rounded-t-sm">
+                    <span>Inspection Result</span>
+                    <span className="text-[11px] font-mono font-normal opacity-90">Live Datalogic Feed</span>
+                  </div>
+                  <div className="flex-1 bg-white border-x border-b border-gray-200 overflow-hidden flex flex-col min-h-0 rounded-b-sm">
+                    <ExtractionDetails
+                      isRunning={isRunning || inspectionState === 'PAUSED'}
+                      lastEvent={lastEvent}
+                      activeRecipeName={activeRecipe.name}
+                      expectedCode={activeRecipe.targetCode}
+                    />
+                  </div>
+                </div>
+
               </div>
-              <div className="flex-1 h-full overflow-hidden min-h-0">
-                <ResultsPanel
-                  isRunning={isRunning || inspectionState === 'PAUSED'}
-                  lastEvent={lastEvent}
-                  activeRecipeName={activeRecipe.name}
-                  expectedCode={activeRecipe.targetCode}
-                  recentEvents={recentEvents}
-                />
+
+              {/* BOTTOM SECTION: Full Width Event Logs (100% Width across entire screen) */}
+              <div className="flex-1 min-h-0 basis-[44%] flex flex-col bg-white p-1.5 shadow-sm rounded-md border border-gray-200 overflow-hidden">
+                <div className="bg-[#183b80] text-white font-bold text-sm px-3 py-1.5 flex items-center justify-between shrink-0 rounded-t-sm">
+                  <span>Event Logs</span>
+                  <span className="text-[11px] font-mono font-normal opacity-90">Real-time Verification Stream</span>
+                </div>
+                <div className="flex-1 bg-white border-x border-b border-gray-200 overflow-hidden flex flex-col min-h-0 rounded-b-sm">
+                  <EventLogs
+                    isRunning={isRunning || inspectionState === 'PAUSED'}
+                    recentEvents={recentEvents}
+                    lastEvent={lastEvent}
+                  />
+                </div>
               </div>
+
             </div>
           )}
 
