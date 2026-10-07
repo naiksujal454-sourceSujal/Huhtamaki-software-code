@@ -34,13 +34,12 @@ const PresetViewer: React.FC<PresetViewerProps> = ({
   return (
     <div className="flex-1 flex flex-col w-full h-full bg-white relative p-1.5 rounded-md shadow-sm border border-gray-200 select-none overflow-hidden gap-1.5">
       
-      {/* Top Box: Preset Name & Target Data + Controls */}
-      <div className="bg-slate-50 border border-gray-200 rounded p-2.5 flex flex-wrap justify-between items-center gap-2 shrink-0">
-        
-        {/* Left: Preset & Target Info */}
+      {/* Top Box: Preset Name & Target Data */}
+      <div className="bg-slate-50 border border-gray-200 rounded px-3 py-2 flex items-center justify-between shrink-0">
+        {/* Preset & Target Info */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-[#123681]/10 text-[#123681] flex items-center justify-center shrink-0 border border-[#123681]/20">
-            <FolderOpen size={18} />
+          <div className="w-8 h-8 rounded-full bg-[#123681]/10 text-[#123681] flex items-center justify-center shrink-0 border border-[#123681]/20">
+            <FolderOpen size={16} />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -61,66 +60,6 @@ const PresetViewer: React.FC<PresetViewerProps> = ({
               </span>
             </div>
           </div>
-        </div>
-
-        {/* Right: Hardware & Defect Controls */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {onOpenScannerConfig && (
-            <button
-              onClick={onOpenScannerConfig}
-              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-[#123681] bg-white hover:bg-blue-50 rounded transition-colors cursor-pointer border border-blue-200 shadow-2xs"
-              title="Open Datalogic Matrix 220 Hardware & Optical Configuration"
-            >
-              <Scan size={14} className="text-[#123681]" />
-              <span>Matrix 220 Setup</span>
-            </button>
-          )}
-
-          {onInjectDefect && (
-            <button
-              onClick={onInjectDefect}
-              disabled={!isRunning}
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded transition-colors shadow-2xs ${
-                isRunning
-                  ? 'bg-amber-500 hover:bg-amber-600 text-white cursor-pointer active:scale-95'
-                  : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-              }`}
-              title="Inject a real Barcode Mismatch Defect into stream"
-            >
-              <Zap size={13} />
-              <span>Inject Defect</span>
-            </button>
-          )}
-
-          {onToggleDefects && (
-            <button
-              onClick={() => onToggleDefects(!simulateDefects)}
-              className={`flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded border transition-colors cursor-pointer ${
-                simulateDefects
-                  ? 'bg-amber-50 text-amber-800 border-amber-300'
-                  : 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
-              }`}
-              title="Toggle automatic defect simulation during continuous runs"
-            >
-              <AlertTriangle size={12} className={simulateDefects ? 'text-amber-600' : 'text-gray-400'} />
-              <span>Defects: {simulateDefects ? 'ON' : 'OFF'}</span>
-            </button>
-          )}
-
-          {onToggleStopOnDefect && (
-            <button
-              onClick={() => onToggleStopOnDefect(!stopOnDefect)}
-              className={`flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded border transition-colors cursor-pointer ${
-                stopOnDefect
-                  ? 'bg-red-50 text-red-800 border-red-300'
-                  : 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
-              }`}
-              title="Toggle automatic line stop and interlock on defect"
-            >
-              <ShieldAlert size={12} className={stopOnDefect ? 'text-red-600' : 'text-gray-400'} />
-              <span>Auto-Stop: {stopOnDefect ? 'ON' : 'OFF'}</span>
-            </button>
-          )}
         </div>
       </div>
 
